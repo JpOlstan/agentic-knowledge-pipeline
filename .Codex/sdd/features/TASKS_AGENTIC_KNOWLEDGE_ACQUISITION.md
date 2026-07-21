@@ -91,7 +91,7 @@ flowchart LR
 
 ## T-001 - Inicializar o bootstrap reproduzivel
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I0  
 **Dependencias:** nenhuma  
 **Requisitos:** RNF-001, RNF-004, RNF-006, CA-009
@@ -146,9 +146,19 @@ uv run pytest -m "not live and not eval"
 - specs e build report estao versionados no repositorio da aplicacao;
 - secret scan manual do tracked tree nao encontra valores reais.
 
+### Evidencia obtida em 2026-07-21
+
+- branch `codex/increment-1-bootstrap-domain` criada a partir de `f5aae25`;
+- os 13 arquivos declarados para T-001 estao presentes;
+- `uv sync --locked` concluiu com CPython 3.12.12 e 21 pacotes resolvidos;
+- `uv run python -c "import knowledge_agents"` concluiu e retornou a versao `0.1.0`;
+- `uv run ruff format --check .` e `uv run ruff check .` passaram;
+- `uv run pytest -m "not live and not eval"` passou com 27 testes;
+- scans locais nao encontraram TODOs necessarios, credenciais em formatos conhecidos ou URLs privadas de integracao.
+
 ## T-002 - Implementar configuracao, contratos e dominio
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I1  
 **Dependencias:** T-001  
 **Requisitos:** RF-001, RF-003 a RF-009, RF-011, RNF-002, RNF-003
@@ -194,6 +204,15 @@ Criar o nucleo imutavel de contratos Pydantic, status, erros, hashing canonico e
 - schemas JSON exportados no build report;
 - matriz contrato-versao registrada;
 - testes de dominio passam sem rede.
+
+### Evidencia obtida em 2026-07-21
+
+- configuracao `pydantic-settings` usa o prefixo aprovado `KA_` e secrets tipados com `SecretStr`;
+- contratos externos toleram campos extras; contratos internos sao imutaveis e usam `extra="forbid"`;
+- serializacao canonica, SHA-256, taxonomia segura de erros, ledger e limites operacionais foram cobertos offline;
+- 11 JSON Schemas tiveram versao e hash SHA-256 exportados no build report;
+- 27 testes de contratos, outputs estruturados, hashing e budgets passaram sem rede;
+- nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
 ## T-003 - Definir ports, fakes e regras de dependencia
 
@@ -845,11 +864,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 0.1 | 2026-07-20 | Codex | Decomposicao inicial do design validado em incrementos, tarefas, dependencias e evidencias. |
 | 1.0 | 2026-07-21 | Codex com validacao humana | Tarefas revisadas e aceitas; build autorizado a partir de T-001 e T-002. |
 | 1.1 | 2026-07-21 | Codex | Handoff concluido e T-001 ajustada para bootstrap do repositorio ja criado, sem mudanca de escopo. |
+| 1.2 | 2026-07-21 | Codex | T-001 e T-002 concluidas no primeiro incremento com evidencias offline; demais tarefas permanecem pendentes. |
 
 ## Proximo passo
 
-Iniciar o build pelo primeiro PR:
+Submeter o primeiro incremento a revisao humana. T-003 e as tarefas posteriores permanecem pendentes e nao foram executadas nesta rodada:
 
 ```text
-T-001 -> T-002
+T-001 completed -> T-002 completed -> human review
 ```
