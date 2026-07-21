@@ -13,9 +13,9 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi executado na branch `codex/increment-1-bootstrap-domain`. T-001 e T-002 estao concluidas com gates offline verdes. T-003 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi executado na branch `codex/increment-2-local-foundations`: T-003, T-004 e T-005 estao concluidas com gates offline verdes. T-006 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
-## Escopo desta execucao
+## Escopo do primeiro incremento
 
 | Campo | Valor |
 |---|---|
@@ -24,6 +24,20 @@ O primeiro incremento foi executado na branch `codex/increment-1-bootstrap-domai
 | Tarefas autorizadas | `T-001`, `T-002` |
 | Tarefas executadas | `T-001`, `T-002` |
 | Tarefas fora do escopo | `T-003` a `T-017` |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
+## Escopo do segundo incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-2-local-foundations` |
+| Commit base | `4bead6b` |
+| Tarefas autorizadas | `T-003`, `T-004`, `T-005` |
+| Tarefas executadas | `T-003`, `T-004`, `T-005` |
+| Tarefas fora do escopo | `T-006` a `T-017` |
 | Rede de aplicacao | nao usada |
 | Testes live/eval | excluidos explicitamente |
 | Deploy | nao executado |
@@ -54,7 +68,7 @@ O primeiro incremento foi executado na branch `codex/increment-1-bootstrap-domai
 | Incremento | Status | Evidencia |
 |---|---|---|
 | I0 | completed | T-001, bootstrap e gates reproduziveis |
-| I1 | in progress | T-002 concluida; T-003 a T-006 pendentes |
+| I1 | in progress | T-002 a T-005 concluidas; T-006 pendente |
 | I2 | pending | nenhuma |
 | I3 | pending | nenhuma |
 | I4 | pending | nenhuma |
@@ -80,6 +94,16 @@ O primeiro incremento foi executado na branch `codex/increment-1-bootstrap-domai
 - implementados settings `KA_`, contratos Pydantic imutaveis, enums, taxonomia segura de erros, hashing canonico, usage ledger e budgets;
 - adicionados testes de contratos, outputs estruturados, hashing, limites operacionais, paths relativos e representacao segura de erros;
 - executados somente gates offline; nenhum provider, SDK cloud, fila, banco externo, deploy, teste live ou eval foi chamado.
+
+### 2026-07-21 - Segundo incremento: T-003, T-004 e T-005
+
+- PR #1 confirmado como mergeado e `main` sincronizada por fast-forward para `4bead6b`;
+- criada a branch `codex/increment-2-local-foundations` a partir da `main` mergeada;
+- definidos sete ports assincronos e fakes deterministicos com failure plans e call logs;
+- implementados SQLiteRunStore, migrations, leases, idempotencia, resume, replay e registro de artifacts;
+- implementado FilesystemArtifactStore com JSON canonico, escrita atomica e validacao de paths;
+- implementada arvore Typer e doctor local com registry extensivel, JSON sanitizado e exit codes previsiveis;
+- executados somente gates offline e filesystem/SQLite temporarios; nenhum provider real, cloud SDK, fila ou LLM foi chamado.
 
 ## Evidencias de T-001
 
@@ -184,10 +208,95 @@ Uma segunda verificacao independente foi executada antes de stage, commit e push
 
 Conclusao: nenhum achado bloqueante ou desvio de escopo foi identificado. O incremento esta apto para commit e draft PR.
 
+## Evidencias de T-003
+
+| Evidencia | Resultado |
+|---|---|
+| Ports | provider, LLM, run store, artifact store, queue, vector index e telemetry |
+| Fakes | sete implementacoes deterministicamente configuraveis |
+| Call logs | operacao e argumentos registrados sem mocks de SDK |
+| Failure plans | falhas configuradas por operacao e verificadas offline |
+| Boundary dominio | bloqueia adapters, application, ports e SDKs externos |
+| Boundary ports | permite somente stdlib e `knowledge_agents.domain` |
+| Testes T-003 | 7 passaram |
+
+## Evidencias de T-004
+
+### Plano de migrations
+
+| Migration | Estruturas |
+|---|---|
+| `001_initial.sql` | `runs`, `artifacts`, `attempts`, `index_records`, `repair_tasks` |
+| `002_indexes.sql` | indexes de status, lease, artifacts, attempts e repairs |
+
+As migrations sao numeradas, aplicadas sob `BEGIN IMMEDIATE`, registradas em `schema_migrations` e idempotentes. O wheel final contem os dois arquivos SQL.
+
+| Comportamento | Evidencia |
+|---|---|
+| SQLite | WAL, foreign keys e busy timeout |
+| Idempotencia | duplicate delivery reutiliza o run; hash conflitante falha fechado |
+| Lease | aquisicao concorrente unica, renew por owner, expiracao e release condicional |
+| Resume/replay | resume preserva ID; replay cria ID e key novos |
+| ArtifactStore | temp file, flush, fsync, atomic replace e hash canonico |
+| Seguranca de path | traversal, absoluto, symlink simulado e colisao bloqueados |
+| Crash safety | falha de replace nao deixa arquivo parcial |
+| Testes T-004 | 10 passaram, zero skips |
+
+## Evidencias de T-005
+
+| Check local | Comportamento |
+|---|---|
+| Python | exige baseline 3.12 |
+| Configuration | valida roots distintos e allowlist relativa |
+| Runtime | verifica diretorio local legivel e gravavel |
+| Vault | valida root e containment dos paths permitidos |
+| SQLite | aplica e confirma migrations 1 e 2 |
+
+O entry point instalado exporta `trigger`, `doctor`, `worker`, `runs`, `repairs` e `index`. Somente `doctor --profile local` possui comportamento ativo neste incremento; comandos futuros retornam precondition exit code 2.
+
+| Evidencia | Resultado |
+|---|---|
+| Saida humana e JSON | sem secrets ou paths absolutos |
+| Exit codes | 0 sucesso, 2 precondicao, 3 dependencia, 4 execucao |
+| Registry | profiles futuros configuraveis sem rede por default |
+| Testes T-005 | 9 passaram |
+
+## Gate combinado do segundo incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-003 a T-005 | 20 de 20 arquivos declarados presentes |
+| escopo do worktree | 29 paths esperados; nenhum path alheio ao incremento |
+| `uv lock --check` | 22 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 22 pacotes auditados |
+| `uv run ruff format --check .` | 31 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| `uv run pytest -m "not live and not eval"` | 53 testes passaram em 2.27s, zero skips |
+| `uv run knowledge-agents --help` | entry point e seis grupos de comandos exportados |
+| `uv build` | sdist e wheel gerados |
+| inspecao do wheel | duas migrations SQL presentes |
+| scans de TODOs, credenciais e URLs privadas | zero matches |
+
+### Rastreabilidade parcial do segundo incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-002 | idempotencia, leases e duplicate delivery locais | base operacional concluida; SQS posterior |
+| RF-003 | provider port e fake substituivel | boundary concluido; providers reais posteriores |
+| RF-008 | ArtifactStore atomico e seguro | base local concluida; Vault Core posterior |
+| RF-009 | migrations, run state, resume e replay | persistencia operacional concluida |
+| RF-010 a RF-012 | vector, telemetry e queue ports/fakes | boundaries concluidos; adapters posteriores |
+| RF-013 | doctor local e registry de profiles | profile local concluido; checks externos posteriores |
+| RF-015 | arvore CLI e exit codes | base CLI concluida; side effects posteriores |
+| RNF-002 | hashes, idempotencia e escrita atomica | gate do incremento concluido |
+| RNF-004 | fakes e suite default offline | gate do incremento concluido |
+| RNF-005 | ports sem SDKs externos | gate do incremento concluido |
+| RNF-006 | lockfile, entry point e wheel reproduzivel | gate do incremento concluido |
+
 ## Desvios
 
-Nenhum desvio de requisito ou arquitetura registrado. A licenca MIT preenche o artefato de licenca previsto no manifesto sem alterar o design. O download de CPython e dependencias ocorreu apenas para preparar o ambiente de build; nenhuma integracao da aplicacao foi executada.
+Nenhum desvio de requisito ou arquitetura registrado. `tests/__init__.py` foi adicionado como suporte minimo para importar os fakes compartilhados. `pyproject.toml`, `uv.lock`, `.env.example`, config, enums e erros foram atualizados somente para suportar as tarefas autorizadas. Nenhuma integracao da aplicacao foi executada.
 
 ## Proximo passo
 
-Submeter T-001 e T-002 a revisao humana. T-003 permanece como proxima tarefa de dependencia, mas nao foi autorizada nem iniciada nesta execucao.
+Submeter T-003, T-004 e T-005 a revisao humana. T-006 permanece como proxima tarefa de dependencia, mas nao foi autorizada nem iniciada nesta execucao.

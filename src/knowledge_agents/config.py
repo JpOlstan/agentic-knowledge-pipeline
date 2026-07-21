@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     env: Literal["dev", "test", "prod"] = "dev"
     vault_path: Path = Path("vault")
+    vault_allowed_paths: tuple[str, ...] = ("01-inbox/agent-runs",)
     runtime_path: Path = Path("runtime")
 
     openai_model_agent_1: str = "gpt-5.6-terra"

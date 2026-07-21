@@ -16,6 +16,7 @@ class ErrorCode(StrEnum):
     CONTRACT_VALIDATION_FAILED = "contract_validation_failed"
     STRUCTURED_OUTPUT_INVALID = "structured_output_invalid"
     INVALID_REQUEST = "invalid_request"
+    IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     ACCESS_DENIED = "access_denied"
     SSRF_BLOCKED = "ssrf_blocked"
     PATH_TRAVERSAL_BLOCKED = "path_traversal_blocked"
@@ -39,6 +40,7 @@ _ERROR_CATEGORIES: dict[ErrorCode, ErrorCategory] = {
     ErrorCode.CONTRACT_VALIDATION_FAILED: ErrorCategory.CONTRACT,
     ErrorCode.STRUCTURED_OUTPUT_INVALID: ErrorCategory.CONTRACT,
     ErrorCode.INVALID_REQUEST: ErrorCategory.PERMANENT,
+    ErrorCode.IDEMPOTENCY_CONFLICT: ErrorCategory.PERMANENT,
     ErrorCode.ACCESS_DENIED: ErrorCategory.PERMANENT,
     ErrorCode.SSRF_BLOCKED: ErrorCategory.PERMANENT,
     ErrorCode.PATH_TRAVERSAL_BLOCKED: ErrorCategory.PERMANENT,

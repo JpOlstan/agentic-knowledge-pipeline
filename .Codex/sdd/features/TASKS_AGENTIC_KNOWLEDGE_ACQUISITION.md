@@ -216,7 +216,7 @@ Criar o nucleo imutavel de contratos Pydantic, status, erros, hashing canonico e
 
 ## T-003 - Definir ports, fakes e regras de dependencia
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I1  
 **Dependencias:** T-002  
 **Requisitos:** RF-003, RF-009 a RF-012, RNF-004, RNF-005
@@ -251,9 +251,17 @@ Estabelecer as interfaces substituiveis e os doubles usados pelos testes antes d
 - teste arquitetural impede dependencia invertida;
 - nenhum SDK externo aparece no dominio ou application layer.
 
+### Evidencia obtida em 2026-07-21
+
+- sete ports assincronos foram definidos para providers, LLM, run store, artifacts, queue, vector index e telemetry;
+- todos os ports possuem fake deterministico configuravel para sucesso e falha, com registro explicito de chamadas;
+- `tests/unit/test_architecture_boundaries.py` passou com sete casos;
+- o teste arquitetural bloqueia imports de adapters, application, ports e SDKs externos no dominio;
+- `tests/__init__.py` foi adicionado como suporte minimo para reutilizacao de `tests/fakes.py`.
+
 ## T-004 - Implementar SQLite e ArtifactStore
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I1  
 **Dependencias:** T-003  
 **Requisitos:** RF-002, RF-008, RF-009, RF-011, RNF-002
@@ -296,9 +304,20 @@ Fornecer estado operacional, leases, idempotencia, migrations e artefatos atomic
 - schema e plano de migration registrados;
 - testes de crash e idempotencia passam em filesystem temporario.
 
+### Evidencia obtida em 2026-07-21
+
+- `runs.db` usa WAL, foreign keys, busy timeout e duas migrations transacionais idempotentes;
+- schema operacional cobre runs, artifacts, attempts, index records e repair tasks;
+- leases condicionais cobrem concorrencia, renovacao, expiracao e release por owner;
+- idempotency key duplicada reutiliza o run original e conflito de payload falha fechado;
+- resume preserva o run ID e replay exige novo run ID e nova idempotency key;
+- ArtifactStore usa JSON canonico, SHA-256, fsync, temp file e atomic replace;
+- traversal, path absoluto, colisao de conteudo, symlink escape simulado e falha de replace foram bloqueados;
+- dez testes offline de integracao e seguranca passaram sem skips.
+
 ## T-005 - Implementar CLI e doctor offline
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I1  
 **Dependencias:** T-004  
 **Requisitos:** RF-013, RF-015, RNF-003, RNF-006
@@ -328,6 +347,16 @@ Expor operacao previsivel e diagnostico por profiles sem rede ou chamada paga po
 - help e comandos podem ser executados apos `uv sync`;
 - doctor local detecta ambiente valido e falhas criticas;
 - nenhuma operacao de doctor chama OpenAI ou consome SQS.
+
+### Evidencia obtida em 2026-07-21
+
+- o entry point `knowledge-agents --help` exporta trigger, worker, doctor, runs, repairs e index;
+- `doctor --profile local --json` verifica Python, configuracao, runtime, vault allowlist e SQLite;
+- o registry aceita profiles futuros sem registrar checks de rede por default;
+- saidas humana e JSON usam apenas mensagens e metadata allowlisted, sem paths ou secrets;
+- exit codes 0, 2, 3 e 4 foram cobertos por testes;
+- comandos futuros com side effect falham como precondicao ate suas tarefas correspondentes;
+- nove testes offline de CLI e doctor passaram sem rede.
 
 ## T-006 - Implementar LangGraph principal com fakes
 
@@ -865,11 +894,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.0 | 2026-07-21 | Codex com validacao humana | Tarefas revisadas e aceitas; build autorizado a partir de T-001 e T-002. |
 | 1.1 | 2026-07-21 | Codex | Handoff concluido e T-001 ajustada para bootstrap do repositorio ja criado, sem mudanca de escopo. |
 | 1.2 | 2026-07-21 | Codex | T-001 e T-002 concluidas no primeiro incremento com evidencias offline; demais tarefas permanecem pendentes. |
+| 1.3 | 2026-07-21 | Codex | T-003, T-004 e T-005 concluidas no segundo incremento com ports/fakes, persistencia local e doctor offline. |
 
 ## Proximo passo
 
-Submeter o primeiro incremento a revisao humana. T-003 e as tarefas posteriores permanecem pendentes e nao foram executadas nesta rodada:
+Submeter o segundo incremento a revisao humana. T-006 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-001 completed -> T-002 completed -> human review
+T-003 completed -> T-004 completed -> T-005 completed -> human review
 ```

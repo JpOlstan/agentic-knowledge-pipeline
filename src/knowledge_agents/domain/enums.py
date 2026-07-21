@@ -52,6 +52,16 @@ class RunOutcome(StrEnum):
     FAILED = "failed"
 
 
+class RunStatus(StrEnum):
+    RECEIVED = "received"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    COMPLETED_WITH_WARNINGS = "completed_with_warnings"
+    ENRICHMENT_REQUIRED = "enrichment_required"
+    REJECTED = "rejected"
+    FAILED = "failed"
+
+
 class IndexStatus(StrEnum):
     PENDING = "pending"
     INDEXED = "indexed"
