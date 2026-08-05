@@ -6,7 +6,7 @@ tools: [python, langgraph, openai, langfuse, qdrant, aws, terraform, mcp, sqlite
 status: validated
 maturity: advanced
 created: 2026-07-18
-updated: 2026-07-21
+updated: 2026-08-04
 review_cycle: on-demand
 tags: [workflow/design, topic/knowledge-acquisition, topic/multi-agent, risk/security]
 aliases: [Design Agentic Knowledge Acquisition]
@@ -144,7 +144,7 @@ stateDiagram-v2
 2. Script unico: reduz clareza, testabilidade e portabilidade futura.
 3. CrewAI adicional: duplica orquestracao e impede uma baseline clara.
 
-**Consequencias:** fronteiras devem ser fiscalizadas por imports e testes arquiteturais; o monolito nao autoriza acoplamento entre adapters e dominio.
+**Consequencias:** fronteiras devem ser fiscalizadas por imports e testes arquiteturais; o monolito nao autoriza acoplamento entre adapters e dominio. Como excecao explicita de orquestracao, apenas `application/graph` pode importar `langgraph`, seu checkpointer e o transporte `aiosqlite` exigido pelo checkpointer local; dominio, ports, agentes e services permanecem independentes de SDKs externos e de adapters concretos.
 
 ### Decisao 002 - LangGraph principal com subgrafos por invocacao
 
@@ -1086,6 +1086,7 @@ Agentes, contratos, RoutePolicy, VaultRenderer e evals nao dependem dessas imple
 | 1.0 | 2026-07-20 | Codex com validacao humana | Design revisado e aceito para decomposicao em tarefas. |
 | 1.1 | 2026-07-20 | Codex | Manifesto alinhado a decomposicao e custodia das specs definida, sem mudanca arquitetural. |
 | 1.2 | 2026-07-21 | Codex com validacao humana | Handoff concluido; este repositorio passa a custodiar as specs canonicas do produto. |
+| 1.3 | 2026-08-04 | Codex durante `/build` | Clarificada a excecao ja implicita no design: somente `application/graph` pode depender de LangGraph, checkpointer e seu transporte SQLite; demais fronteiras continuam isoladas. Nenhuma arquitetura ou requisito foi alterado. |
 
 ## Proximo passo
 

@@ -6,7 +6,7 @@ tools: [python, langgraph, openai, langfuse, qdrant, aws, terraform, mcp, sqlite
 status: validated
 maturity: advanced
 created: 2026-07-20
-updated: 2026-07-21
+updated: 2026-08-04
 review_cycle: on-demand
 tags: [workflow/tasks, topic/knowledge-acquisition, topic/multi-agent, risk/security]
 aliases: [Tasks Agentic Knowledge Acquisition]
@@ -258,6 +258,7 @@ Estabelecer as interfaces substituiveis e os doubles usados pelos testes antes d
 - `tests/unit/test_architecture_boundaries.py` passou com sete casos;
 - o teste arquitetural bloqueia imports de adapters, application, ports e SDKs externos no dominio;
 - `tests/__init__.py` foi adicionado como suporte minimo para reutilizacao de `tests/fakes.py`.
+- clarificacao registrada antes de T-006: `application/graph` pode importar LangGraph, checkpointer e seu transporte SQLite como infraestrutura de orquestracao aprovada; dominio, ports, agentes e services continuam sem SDKs externos.
 
 ## T-004 - Implementar SQLite e ArtifactStore
 
@@ -360,7 +361,7 @@ Expor operacao previsivel e diagnostico por profiles sem rede ou chamada paga po
 
 ## T-006 - Implementar LangGraph principal com fakes
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I1  
 **Dependencias:** T-004, T-005  
 **Requisitos:** RF-004 a RF-009, RF-011, CA-003 a CA-006, CA-008
@@ -411,6 +412,21 @@ Provar o pipeline de tres subgrafos, checkpoints, transicoes e correcoes sem int
 - grafo e rotas exportados no build report;
 - todos os cenarios funcionam com fakes;
 - I1 passa integralmente sem rede.
+
+### Evidencia obtida em 2026-08-04
+
+- parent graph compilado com `AsyncSqliteSaver`, serializer MsgPack em modo estrito e
+  `thread_id=run_id`;
+- tres subgrafos estaticos e per-invocation implementados, com refs, hashes, contadores,
+  budgets e warnings no state;
+- policy editorial cobre zero, um e dois ciclos, freeze por hash, progress fingerprint,
+  `enrichment_required` e `rejected`, sem retorno editorial ao A1;
+- resume validado apos cada um dos 13 nodes sem repetir agentes ou provider ja concluidos;
+- falhas secundarias de index e telemetry terminam com warnings seguros e sem rerun de LLM;
+- `uv run pytest -m "not live and not eval" -q`: 66 testes passaram, zero skips;
+- `uv run ruff format --check .`, `uv run ruff check .`, `uv lock --check`, `uv sync
+  --locked` e `uv build`: sucesso offline;
+- nenhuma integracao live, eval, deploy, rede de aplicacao ou credencial real foi usada.
 
 ## T-007 - Implementar Vault Core deterministico
 
@@ -895,11 +911,13 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.1 | 2026-07-21 | Codex | Handoff concluido e T-001 ajustada para bootstrap do repositorio ja criado, sem mudanca de escopo. |
 | 1.2 | 2026-07-21 | Codex | T-001 e T-002 concluidas no primeiro incremento com evidencias offline; demais tarefas permanecem pendentes. |
 | 1.3 | 2026-07-21 | Codex | T-003, T-004 e T-005 concluidas no segundo incremento com ports/fakes, persistencia local e doctor offline. |
+| 1.4 | 2026-08-04 | Codex | Clarificada a boundary de T-003 para permitir LangGraph e o checkpointer SQLite somente em `application/graph`, conforme arquitetura ja validada para T-006. |
+| 1.5 | 2026-08-04 | Codex | T-006 concluida no terceiro incremento com LangGraph, fakes, checkpoint SQLite, revision policy e resume offline. |
 
 ## Proximo passo
 
-Submeter o segundo incremento a revisao humana. T-006 permanece pendente e nao foi executada nesta rodada:
+Submeter o terceiro incremento a revisao humana. T-007 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-003 completed -> T-004 completed -> T-005 completed -> human review
+T-006 completed -> human review -> T-007 pending
 ```

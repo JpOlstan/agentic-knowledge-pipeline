@@ -34,7 +34,6 @@ ROOT = Path(__file__).parents[2]
 DOMAIN_ROOT = ROOT / "src" / "knowledge_agents" / "domain"
 PORTS_ROOT = ROOT / "src" / "knowledge_agents" / "ports"
 APPLICATION_ROOT = ROOT / "src" / "knowledge_agents" / "application"
-APPLICATION_ROOT = ROOT / "src" / "knowledge_agents" / "application"
 FORBIDDEN_DOMAIN_PREFIXES = (
     "knowledge_agents.adapters",
     "knowledge_agents.application",
@@ -90,13 +89,19 @@ def test_ports_depend_only_on_domain_and_standard_library() -> None:
     assert violations == []
 
 
-def test_application_layer_does_not_import_adapters_or_external_sdks() -> None:
+def test_application_layer_only_imports_langgraph_inside_graph_modules() -> None:
     violations: list[str] = []
     for path in APPLICATION_ROOT.rglob("*.py"):
+        relative_parts = path.relative_to(APPLICATION_ROOT).parts
         for module in imported_modules(path):
             if module.startswith("knowledge_agents.adapters"):
                 violations.append(f"{path.name}: {module}")
             if module.split(".")[0] in FORBIDDEN_EXTERNAL_SDKS:
+                if (
+                    module.split(".")[0] in {"aiosqlite", "langgraph"}
+                    and relative_parts[0] == "graph"
+                ):
+                    continue
                 violations.append(f"{path.name}: {module}")
 
     assert violations == []
