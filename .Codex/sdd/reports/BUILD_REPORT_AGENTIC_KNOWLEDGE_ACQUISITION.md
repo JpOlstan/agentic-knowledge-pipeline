@@ -4,7 +4,7 @@ area: ai-for-data-engineering
 domain: agentic-knowledge-acquisition
 status: in-progress
 created: 2026-07-21
-updated: 2026-07-21
+updated: 2026-08-04
 tags: [workflow/build, topic/knowledge-acquisition, evidence/traceability]
 related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISITION]
 ---
@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi executado na branch `codex/increment-2-local-foundations`: T-003, T-004 e T-005 estao concluidas com gates offline verdes. T-006 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi executado na branch `codex/increment-3-langgraph-fakes`: T-006 esta concluida com gates offline verdes. T-007 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -38,6 +38,20 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Tarefas autorizadas | `T-003`, `T-004`, `T-005` |
 | Tarefas executadas | `T-003`, `T-004`, `T-005` |
 | Tarefas fora do escopo | `T-006` a `T-017` |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
+## Escopo do terceiro incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-3-langgraph-fakes` |
+| Commit base | `817cd08` |
+| Tarefas autorizadas | `T-006` |
+| Tarefas executadas | `T-006` |
+| Tarefas fora do escopo | `T-007` a `T-017` |
 | Rede de aplicacao | nao usada |
 | Testes live/eval | excluidos explicitamente |
 | Deploy | nao executado |
@@ -68,7 +82,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Incremento | Status | Evidencia |
 |---|---|---|
 | I0 | completed | T-001, bootstrap e gates reproduziveis |
-| I1 | in progress | T-002 a T-005 concluidas; T-006 pendente |
+| I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
 | I2 | pending | nenhuma |
 | I3 | pending | nenhuma |
 | I4 | pending | nenhuma |
@@ -104,6 +118,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 - implementado FilesystemArtifactStore com JSON canonico, escrita atomica e validacao de paths;
 - implementada arvore Typer e doctor local com registry extensivel, JSON sanitizado e exit codes previsiveis;
 - executados somente gates offline e filesystem/SQLite temporarios; nenhum provider real, cloud SDK, fila ou LLM foi chamado.
+
+### 2026-08-04 - Terceiro incremento: T-006
+
+- PR #2 confirmado como mergeado e `main` sincronizada por fast-forward para `817cd08`;
+- criada a branch `codex/increment-3-langgraph-fakes` a partir da `main` mergeada;
+- clarificada a boundary ja implicada pelo DESIGN: somente `application/graph` pode importar
+  LangGraph, o checkpointer e o transporte SQLite; dominio, ports, agents e services continuam
+  independentes desses frameworks;
+- implementado parent graph com 13 nodes, tres subgrafos estaticos per-invocation e
+  `AsyncSqliteSaver` em banco separado, usando `thread_id=run_id` e serializer estrito;
+- implementados A1, A2 e A3 sobre contratos e ports, sem SDK real, com budgets e usage ledger;
+- implementado loop editorial A3 -> A2 somente para drafts bloqueados, freeze de aprovados por
+  hash, maximo de dois ciclos e progress fingerprint;
+- implementado terminal seguro para evidencia insuficiente, rejeicao e falhas secundarias;
+- implementado RunService para execute, state e resume a partir do checkpoint;
+- toda a execucao usou fakes e SQLite/filesystem temporarios, sem rede de aplicacao.
 
 ## Evidencias de T-001
 
@@ -261,6 +291,71 @@ O entry point instalado exporta `trigger`, `doctor`, `worker`, `runs`, `repairs`
 | Registry | profiles futuros configuraveis sem rede por default |
 | Testes T-005 | 9 passaram |
 
+## Evidencias de T-006
+
+### Grafo e persistencia
+
+| Elemento | Evidencia |
+|---|---|
+| Parent graph | 13 nodes na ordem validada pelo DESIGN |
+| Subgrafos | `agent_1`, `agent_2` e `agent_3`, estaticos e per-invocation |
+| Checkpointer | `AsyncSqliteSaver` assincrono, WAL e busy timeout |
+| Serializer | `JsonPlusSerializer(allowed_msgpack_modules=None)` |
+| Correlacao | `thread_id=run_id` |
+| State | refs serializadas, hashes, counters, budget, usage e warnings |
+| Conteudo grande | evidencia e corpos de drafts ausentes do snapshot |
+| Resume | interrupcao e retomada validadas depois de cada um dos 13 nodes |
+
+Fluxo exportado:
+
+```text
+prepare_run -> inspect_source -> acquire_evidence -> agent_1
+-> validate_acquisition -> retrieve_vault_context -> agent_2
+-> validate_drafts -> agent_3 -> route_review
+
+route_review -- revise --> agent_2
+route_review -- persist --> persist_terminal -> sync_index -> flush_telemetry
+```
+
+### Policy editorial e falhas
+
+| Cenario | Resultado |
+|---|---|
+| Happy path | `completed`, 3 chamadas principais |
+| Um ciclo editorial | somente draft bloqueado revisado; aprovado congelado por hash |
+| Dois ciclos editoriais | `completed`, 7 chamadas dentro do budget |
+| Mesmo fingerprint | termina `enrichment_required` sem segundo ciclo inutil |
+| Evidencia insuficiente | termina `enrichment_required` sem retornar ao A1 |
+| Falha de index | warning `index_repair_required`; agentes nao reexecutados |
+| Falha de telemetry | warning `telemetry_repair_required`; agentes nao reexecutados |
+| Causa sensivel simulada | detalhe da excecao nao aparece no state nem no manifest |
+
+### Suites de T-006
+
+| Suite | Casos novos | Resultado |
+|---|---:|---|
+| `tests/unit/test_routing.py` | 2 | passou |
+| `tests/unit/test_review_policy.py` | 4 | passou |
+| `tests/integration/test_graph_happy_path.py` | 2 | passou |
+| `tests/integration/test_graph_revision.py` | 4 | passou |
+| `tests/integration/test_resume.py` | 1 parametrizado pelos 13 nodes | passou |
+| **Total T-006** | **13** | **passou sem rede** |
+
+### Rastreabilidade parcial do terceiro incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-004 | A1 produz `AcquisitionPacket` por port estruturado e fake | fluxo offline concluido; adapter real posterior |
+| RF-005 | A2 produz e revisa `DraftPackage` somente no escopo bloqueado | fluxo offline concluido; Vault Core em T-007 |
+| RF-006 | retrieval via vector port antes de A2 | orquestracao concluida; Qdrant em T-008 |
+| RF-007 | A3 revisa hashes exatos e emite recomendacao terminal | fluxo offline concluido |
+| RF-008 | manifest e artifacts registrados por refs | orquestracao concluida; escrita Vault em T-007 |
+| RF-009 | checkpoint, resume e run state correlacionados por run ID | fluxo offline concluido |
+| RF-011 | retry tecnico permanece fora do loop editorial; repair secundario vira warning | policy concluida |
+| RNF-002 | freeze por hash, state compacto e artifacts canonicos | gate do incremento concluido |
+| RNF-003 | budgets verificados antes de cada chamada e usage reconciliado | gate do incremento concluido |
+| RNF-004 | providers e LLM totalmente substituidos por fakes | gate do incremento concluido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -293,10 +388,32 @@ O entry point instalado exporta `trigger`, `doctor`, `worker`, `runs`, `repairs`
 | RNF-005 | ports sem SDKs externos | gate do incremento concluido |
 | RNF-006 | lockfile, entry point e wheel reproduzivel | gate do incremento concluido |
 
+## Gate combinado do terceiro incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-006 | 13 de 13 arquivos declarados presentes; um helper de teste compartilhado |
+| `uv lock --check` | 53 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 53 pacotes auditados |
+| `uv run ruff format --check .` | 44 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| `uv run pytest -m "not live and not eval" -q` | 66 testes passaram em 8.49s, zero skips |
+| `uv build` | sdist e wheel gerados |
+| scan de TODOs | zero matches em source, tests e configuracao |
+| scan de credenciais comuns | zero matches fora de lockfile e metadados Git |
+
+Conclusao: nenhum achado bloqueante, dado sensivel ou desvio de escopo foi identificado. O
+incremento esta apto para revisao humana, commit e draft PR.
+
 ## Desvios
 
-Nenhum desvio de requisito ou arquitetura registrado. `tests/__init__.py` foi adicionado como suporte minimo para importar os fakes compartilhados. `pyproject.toml`, `uv.lock`, `.env.example`, config, enums e erros foram atualizados somente para suportar as tarefas autorizadas. Nenhuma integracao da aplicacao foi executada.
+Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
+de boundary foram clarificados para explicitar a excecao ja exigida por T-006: imports de
+LangGraph, checkpoint e `aiosqlite` ficam confinados a `application/graph`. O helper
+`tests/graph_scenarios.py`, `pyproject.toml` e `uv.lock` foram adicionados/atualizados apenas como
+suporte necessario para os cenarios offline. Nenhuma integracao da aplicacao foi executada.
 
 ## Proximo passo
 
-Submeter T-003, T-004 e T-005 a revisao humana. T-006 permanece como proxima tarefa de dependencia, mas nao foi autorizada nem iniciada nesta execucao.
+Submeter T-006 a revisao humana. T-007 e a proxima tarefa de dependencia, mas nao foi autorizada
+nem iniciada nesta execucao.

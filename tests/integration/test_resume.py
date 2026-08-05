@@ -1,9 +1,22 @@
 import asyncio
+import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from tests.graph_scenarios import (
+    IDEMPOTENCY_KEY,
+    RUN_ID,
+    acquisition_packet,
+    make_draft,
+    make_draft_package,
+    make_harness,
+    make_review,
+)
+
 from knowledge_agents.adapters.sqlite_run_store import SqliteRunStore
+from knowledge_agents.application.graph.builder import GRAPH_NODE_ORDER, open_graph
+from knowledge_agents.application.services.run_service import RunService
 from knowledge_agents.domain.enums import RunStatus
 
 
@@ -129,5 +142,60 @@ def test_lease_is_conditional_renewable_and_recoverable_after_expiry(tmp_path: P
         )
         assert not await store.release_lease(run_id=record.run_id, owner=winner)
         assert await store.release_lease(run_id=record.run_id, owner=loser)
+
+    asyncio.run(scenario())
+
+
+def test_graph_resumes_after_every_node_without_repeating_completed_work(
+    tmp_path: Path,
+) -> None:
+    async def interrupted_once(node: str, index: int) -> None:
+        draft = make_draft("note-a")
+        harness = make_harness(
+            [
+                acquisition_packet(),
+                make_draft_package(draft),
+                make_review((draft,)),
+            ]
+        )
+        checkpoint_path = tmp_path / f"case-{index}" / "checkpoints.db"
+
+        async with open_graph(
+            checkpoint_path,
+            harness.dependencies,
+            interrupt_after=(node,),
+        ) as graph:
+            interrupted = await RunService(
+                graph=graph,
+                run_store=harness.run_store,
+                artifacts=harness.artifacts,
+            ).execute(
+                harness.request,
+                run_id=RUN_ID,
+                idempotency_key=f"{IDEMPOTENCY_KEY}-{index}",
+            )
+            snapshot = await graph.aget_state({"configurable": {"thread_id": RUN_ID}})
+            assert snapshot.values
+            assert "PRIVATE_EVIDENCE_BODY" not in json.dumps(snapshot.values)
+
+        calls_before_resume = len(harness.llm.calls)
+        provider_calls_before_resume = len(harness.provider.calls)
+        async with open_graph(checkpoint_path, harness.dependencies) as graph:
+            completed = await RunService(
+                graph=graph,
+                run_store=harness.run_store,
+                artifacts=harness.artifacts,
+            ).resume(RUN_ID)
+
+        assert completed["outcome"] == "completed"
+        assert len(harness.llm.calls) == 3
+        assert len(harness.provider.calls) == 2
+        assert len(harness.llm.calls) >= calls_before_resume
+        assert len(harness.provider.calls) >= provider_calls_before_resume
+        assert interrupted["run_id"] == completed["run_id"] == RUN_ID
+
+    async def scenario() -> None:
+        for index, node in enumerate(GRAPH_NODE_ORDER):
+            await interrupted_once(node, index)
 
     asyncio.run(scenario())
