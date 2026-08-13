@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi executado na branch `codex/increment-8-notebooklm-provider`: T-011 esta concluida com gates offline verdes; T-012 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy, URL real ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi mergeado no PR #8, commit `fe74727`. O nono incremento foi executado na branch `codex/increment-9-sqs-worker`: T-012 esta concluida com gates offline verdes; T-013 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao AWS/live, eval, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -138,6 +138,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do nono incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-9-sqs-worker` |
+| Commit base | `fe74727` |
+| Tarefas autorizadas | `T-012` |
+| Tarefas executadas | `T-012` |
+| Tarefas fora do escopo | `T-013` a `T-017` |
+| SQS | adapter exercitado somente com client fake |
+| Worker | lifecycle exercitado com `FakeQueue`, `FakeRunStore` e SQLite temporario |
+| Rede de aplicacao | nao usada; indice de pacotes usado somente para resolver boto3 |
+| Testes live/eval | excluidos explicitamente; dois smokes permaneceram desmarcados |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -167,7 +183,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
-| I5 | pending | nenhuma |
+| I5 | in-progress | T-012 concluida offline; T-013 pendente |
 | I6 | pending | nenhuma |
 | I7 | pending | nenhuma |
 
@@ -311,6 +327,25 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 - smoke live read-only foi criado sob marker `live`, mas permaneceu desmarcado;
 - somente codigo do proxy e metadata do package/registry foram lidos; data dir, cookies, conta,
   browser, URL real e sessao nao foram acessados.
+
+### 2026-08-13 - Nono incremento: T-012
+
+- PR #8 confirmado como mergeado e branch criada a partir de `fe74727`;
+- implementado `SqsQueue` sobre boto3 com chamadas sincronas deslocadas para thread, long polling de
+  20 segundos, visibility inicial de 180 segundos, heartbeat, ack e release;
+- resposta do SDK e validada antes de criar `QueueMessage`; falhas sao convertidas em
+  `QUEUE_UNAVAILABLE` sem incluir queue URL ou corpo da mensagem;
+- envelope nao confiavel limitado a 16 KiB e validado estritamente, inclusive versao, timestamp,
+  campos extras e chaves JSON duplicadas;
+- worker adquire lease duravel antes do executor, renova lease antes da visibility e reconhece a
+  mensagem somente depois de reler estado terminal no `RunStore`;
+- falha recuperavel libera visibility; perda de heartbeat cancela o trabalho em curso e deixa o
+  timeout permitir redelivery e resume;
+- entrega terminal duplicada foi testada com SQLite real sem segunda execucao; shutdown apos poll
+  libera trabalho ainda nao iniciado;
+- boto3 foi adicionado como dependencia direta e isolado no adapter; nenhum client AWS real foi
+  criado durante os testes;
+- AWS/SQS real, live/eval, deploy, T-013 e credenciais reais nao foram usados.
 
 ## Evidencias de T-001
 
@@ -779,6 +814,43 @@ automaticos ficam desabilitados.
 | RNF-001 | allowlist fail-closed, ambiente minimo e sanitizacao de URL/session | gate concluido |
 | CA-001 | fluxo provider provado com fake MCP | offline concluido; live manual pendente |
 
+## Evidencias de T-012
+
+### Controles SQS e worker
+
+| Controle | Evidencia |
+|---|---|
+| Poll | `WaitTimeSeconds=20`, lote configuravel de 1 a 10 |
+| Visibility | inicial de 180 segundos; release explicito usa zero |
+| Entrada | JSON de ate 16 KiB, schema `1`, extras/duplicatas proibidos |
+| Lease | `create_or_get_run` e `acquire_lease` precedem o executor |
+| Heartbeat | a cada 60 segundos; SQLite renovado antes de SQS por 180 segundos |
+| Ack | delete somente apos status terminal relido do armazenamento duravel |
+| Falha | executor falho libera visibility; heartbeat perdido aguarda timeout |
+| Duplicidade | estado terminal SQLite evita segunda execucao e permite novo ack |
+| Shutdown | mensagem recebida apos stop e liberada sem iniciar run |
+| SDK | boto3 confinado ao adapter; testes usam client fake |
+
+### Suites de T-012
+
+| Suite | Casos | Resultado |
+|---|---:|---|
+| `tests/integration/test_duplicate_delivery.py` | 3 | passou; SQLite temporario |
+| `tests/integration/test_worker_lifecycle.py` | 7 | passou com fakes |
+| **Casos novos** | **8** | **passaram sem AWS** |
+| **Suite offline total** | **153** | **passou; 2 live deselected** |
+
+### Rastreabilidade parcial do nono incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-002 | poll, lease, heartbeat, duplicate delivery e ack terminal | concluido offline |
+| RF-009 | redelivery reutiliza run duravel e entrega terminal nao reexecuta graph | concluido offline |
+| RF-011 | ownership de retry e perda de lease falham de forma segura | concluido offline |
+| RF-015 | inicio/processamento e shutdown sao operacoes explicitas do worker | lifecycle concluido |
+| CA-005 | falha de heartbeat permite redelivery sem ack prematuro | concluido offline |
+| CA-008 | SQLite e idempotency key preservam o run em entrega repetida | concluido offline |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -915,6 +987,24 @@ Conclusao: T-011 atende ao DESIGN com fake MCP e subprocesso Python local, sem i
 browser, NotebookLM, sessao real, rede, live/eval, credencial, deploy ou tarefa T-012. O incremento
 esta apto para revisao humana.
 
+## Gate do nono incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-012 | 4 de 4 arquivos declarados presentes; `entrypoints/__init__.py` como suporte |
+| `uv lock --check --offline` | 84 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked --offline` | 84 pacotes auditados |
+| `ruff format --check .` | 69 arquivos ja formatados |
+| `ruff check .` | todos os checks passaram |
+| testes direcionados T-012 | 10 testes passaram em 0.43s |
+| `pytest -m "not live and not eval" -q` | 153 testes passaram; 2 live deselected |
+| `uv build --offline` | sdist e wheel gerados; adapter SQS e worker presentes no wheel |
+| integracoes externas | nenhum client AWS, fila real, live/eval, deploy ou credencial usado |
+
+Conclusao: T-012 atende ao DESIGN com client/queue fakes e SQLite temporario. Entrega duplicada,
+lease, heartbeat, redelivery, ack terminal e shutdown foram provados offline sem antecipar T-013.
+O incremento esta apto para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -941,8 +1031,12 @@ suporte necessario aos quatro arquivos declarados, adicionando somente configura
 checks offline do runtime/registry. O registry local permanece `evaluating`; por isso o provider
 falha fechado quando `supervised=false` e uso recorrente nao supervisionado continua bloqueado ate
 promocao humana para `approved-read-only`. Nenhuma dependencia foi adicionada e o lockfile nao mudou.
+Na T-012, `pyproject.toml` e `uv.lock` foram atualizados para declarar boto3 como dependencia direta;
+`entrypoints/__init__.py` foi criado para empacotar o novo modulo. O SDK permanece confinado ao adapter,
+e sua interface foi exercitada apenas por fake. CLI composition root, Lambda, Terraform, SQS real e
+teste live AWS permanecem para T-013 ou wiring posterior conforme o DESIGN.
 
 ## Proximo passo
 
-Submeter T-011 a revisao humana. T-012 e a proxima tarefa do incremento I5, mas nao foi autorizada
+Submeter T-012 a revisao humana. T-013 e a proxima tarefa do incremento I5, mas nao foi autorizada
 nem iniciada nesta execucao.
