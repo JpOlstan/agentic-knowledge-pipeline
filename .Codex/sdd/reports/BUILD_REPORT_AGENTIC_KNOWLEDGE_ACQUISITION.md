@@ -4,7 +4,7 @@ area: ai-for-data-engineering
 domain: agentic-knowledge-acquisition
 status: in-progress
 created: 2026-07-21
-updated: 2026-08-04
+updated: 2026-08-05
 tags: [workflow/build, topic/knowledge-acquisition, evidence/traceability]
 related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISITION]
 ---
@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi executado na branch `codex/increment-3-langgraph-fakes`: T-006 esta concluida com gates offline verdes. T-007 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi executado na branch `codex/increment-4-vault-core`: T-007 esta concluida com gates offline verdes. T-008 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -57,6 +57,21 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do quarto incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-4-vault-core` |
+| Commit base | `d75d118` |
+| Tarefas autorizadas | `T-007` |
+| Tarefas executadas | `T-007` |
+| Tarefas fora do escopo | `T-008` a `T-017` |
+| Vault usado | somente fixtures em diretorios temporarios |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -83,7 +98,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 |---|---|---|
 | I0 | completed | T-001, bootstrap e gates reproduziveis |
 | I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
-| I2 | pending | nenhuma |
+| I2 | in progress | T-007 concluida; T-008 pendente |
 | I3 | pending | nenhuma |
 | I4 | pending | nenhuma |
 | I5 | pending | nenhuma |
@@ -134,6 +149,23 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 - implementado terminal seguro para evidencia insuficiente, rejeicao e falhas secundarias;
 - implementado RunService para execute, state e resume a partir do checkpoint;
 - toda a execucao usou fakes e SQLite/filesystem temporarios, sem rede de aplicacao.
+
+### 2026-08-05 - Quarto incremento: T-007
+
+- PR #3 confirmado como mergeado e `main` sincronizada por fast-forward para `d75d118`;
+- criada a branch `codex/increment-4-vault-core` a partir da `main` mergeada;
+- implementado inventario Markdown reduzido e ordenado, limitado a roots relativas allowlisted e
+  sem transportar corpos de notas;
+- implementado renderer deterministico de frontmatter e secoes Markdown com hash revisado, status,
+  proveniencia por claim e recomendacao de promocao apenas informativa;
+- implementado writer restrito a `01-inbox/agent-runs/<run_id>`, com preflight de todos os targets,
+  temp file, flush, fsync, replace atomico e idempotencia por bytes;
+- preservados drafts `ready`, `partially_ready` e `enrichment_required`; drafts `rejected` ou com
+  decisao `discard` sao registrados como omitidos;
+- implementados manifest JSON canonico e review summary sem issues, required changes ou conteudo
+  integral dos drafts;
+- todos os testes usaram apenas vaults temporarios e contracts locais, sem ler ou alterar o vault
+  real.
 
 ## Evidencias de T-001
 
@@ -356,6 +388,59 @@ route_review -- persist --> persist_terminal -> sync_index -> flush_telemetry
 | RNF-003 | budgets verificados antes de cada chamada e usage reconciliado | gate do incremento concluido |
 | RNF-004 | providers e LLM totalmente substituidos por fakes | gate do incremento concluido |
 
+## Evidencias de T-007
+
+### Inventario e escrita
+
+| Controle | Evidencia |
+|---|---|
+| Allowlist | scanner aceita somente paths relativos e ignora Markdown fora dos roots autorizados |
+| Inventario reduzido | path relativo, note ID, titulo, status e hashes; nenhum corpo e retornado |
+| Destino de escrita | constante `01-inbox/agent-runs/<run_id>` |
+| Renderizacao | frontmatter e secoes derivados de contratos, sem Markdown final livre do LLM |
+| Estados preservados | `ready`, `partially_ready`, `enrichment_required` |
+| Estados omitidos | `rejected` e `discard`, registrados no resultado e summary |
+| Idempotencia | segunda persistencia identica nao altera bytes nem mtime |
+| Atomicidade | temp file, flush, fsync, replace e cleanup em falha |
+| Colisoes | note ID canonico e conteudo divergente no mesmo run falham fechado |
+| Paths | traversal, absoluto, filename inseguro e symlink bloqueados |
+| Artefatos terminais | `manifest.json`, `review-summary.md` e `drafts/<note-id>.md` |
+| Operacoes proibidas | nenhuma API de promote, delete, commit, push ou Git |
+
+Arvore verificada por fixture:
+
+```text
+01-inbox/agent-runs/run-0123456789abcdef/
+|- manifest.json
+|- review-summary.md
+`- drafts/
+   |- note-enrichment.md
+   |- note-partial.md
+   `- note-ready.md
+```
+
+O review summary registra somente run ID, recomendacao, counts, note IDs, status e elegibilidade.
+Issues, required changes e corpos dos drafts nao sao copiados para esse resumo.
+
+### Suites de T-007
+
+| Suite | Resultado |
+|---|---|
+| `tests/integration/test_vault_writer.py` | 4 passaram |
+| `tests/security/test_path_traversal.py` | 10 passaram no arquivo combinado |
+| **Gate direcionado** | **14 passaram em 0.48s** |
+| **Suite offline total** | **75 passaram em 9.07s** |
+
+### Rastreabilidade parcial do quarto incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-005 | drafts atomicos renderizados a partir de `DraftPackage` e decisions | persistencia local concluida |
+| RF-006 | status e reviewed hash determinam preservacao ou omissao | persistencia local concluida |
+| RF-008 | staging fixo, escrita atomica, manifest e summary | Vault Core concluido |
+| RNF-001 | allowlist, containment, symlink e ausencia de APIs de promocao/Git | gate concluido |
+| RNF-002 | hash revisado, idempotencia por bytes e colisao fechada | gate concluido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -405,15 +490,35 @@ route_review -- persist --> persist_terminal -> sync_index -> flush_telemetry
 Conclusao: nenhum achado bloqueante, dado sensivel ou desvio de escopo foi identificado. O
 incremento esta apto para revisao humana, commit e draft PR.
 
+## Gate do quarto incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-007 | 4 de 4 arquivos declarados criados/atualizados |
+| `uv lock --check` | 53 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 53 pacotes auditados |
+| `uv run ruff format --check .` | 47 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| `uv run pytest -m "not live and not eval" -q` | 75 testes passaram em 9.07s, zero skips |
+| `uv build` | sdist e wheel gerados |
+| scan de TODOs | zero matches em source, tests e configuracao |
+| scan de credenciais comuns | zero matches fora de lockfile, ambiente e metadados Git |
+
+Conclusao: T-007 atende ao DESIGN sem acessar vault real, rede, SDK externo ou tarefas de T-008.
+O incremento esta apto para revisao humana, commit e draft PR.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
 de boundary foram clarificados para explicitar a excecao ja exigida por T-006: imports de
 LangGraph, checkpoint e `aiosqlite` ficam confinados a `application/graph`. O helper
 `tests/graph_scenarios.py`, `pyproject.toml` e `uv.lock` foram adicionados/atualizados apenas como
-suporte necessario para os cenarios offline. Nenhuma integracao da aplicacao foi executada.
+suporte necessario para os cenarios offline. Na T-007, o staging fixo e automaticamente incluido
+na allowlist interna do writer para que idempotencia e colisao entre runs sejam sempre verificadas;
+roots canonicos adicionais continuam explicitamente allowlisted pelo chamador. Nenhuma integracao
+da aplicacao foi executada.
 
 ## Proximo passo
 
-Submeter T-006 a revisao humana. T-007 e a proxima tarefa de dependencia, mas nao foi autorizada
+Submeter T-007 a revisao humana. T-008 e a proxima tarefa de dependencia, mas nao foi autorizada
 nem iniciada nesta execucao.
