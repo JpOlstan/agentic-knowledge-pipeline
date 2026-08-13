@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from knowledge_agents.domain.contracts import ArtifactRef
+from knowledge_agents.domain.contracts import ArtifactRef, IndexRecord, RepairTask
 from knowledge_agents.domain.enums import RunStatus
 
 
@@ -71,6 +71,18 @@ class RunStore(Protocol):
     ) -> RunRecord: ...
 
     async def record_artifact(self, *, run_id: str, artifact: ArtifactRef) -> None: ...
+
+    async def get_index_record(self, path: str) -> IndexRecord | None: ...
+
+    async def list_index_records(self) -> tuple[IndexRecord, ...]: ...
+
+    async def save_index_record(self, record: IndexRecord) -> None: ...
+
+    async def delete_index_record(self, path: str) -> None: ...
+
+    async def enqueue_repair(self, task: RepairTask) -> None: ...
+
+    async def list_repairs(self) -> tuple[RepairTask, ...]: ...
 
     async def replay_run(
         self,

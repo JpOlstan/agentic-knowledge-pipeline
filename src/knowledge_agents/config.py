@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     openai_model_agent_2: str = "gpt-5.6-terra"
     openai_model_agent_3: str = "gpt-5.6-terra"
     openai_embedding_model: str = "text-embedding-3-small"
+    openai_embedding_dimensions: int = Field(default=1_536, gt=0)
     openai_api_key: SecretStr | None = None
 
     qdrant_url: AnyHttpUrl = "http://127.0.0.1:6333"

@@ -6,7 +6,7 @@ tools: [python, langgraph, openai, langfuse, qdrant, aws, terraform, mcp, sqlite
 status: validated
 maturity: advanced
 created: 2026-07-20
-updated: 2026-08-05
+updated: 2026-08-13
 review_cycle: on-demand
 tags: [workflow/tasks, topic/knowledge-acquisition, topic/multi-agent, risk/security]
 aliases: [Tasks Agentic Knowledge Acquisition]
@@ -482,7 +482,7 @@ Renderizar e persistir drafts e manifests somente na area permitida, sem promoca
 
 ## T-008 - Implementar chunking, embeddings e Qdrant local
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I2  
 **Dependencias:** T-007  
 **Requisitos:** RF-010, RNF-002, RNF-005, CA-006
@@ -523,6 +523,27 @@ Criar indice unidirecional, incremental e reconstruivel para evidencias, drafts 
 
 - collections podem ser apagadas e reconstruidas pelas fixtures;
 - teste de sync incremental prova no-op e troca de generation.
+
+### Evidencia obtida em 2026-08-13
+
+- Qdrant local fixado em `qdrant/qdrant:v1.18.2`, com portas REST/gRPC publicadas somente em
+  `127.0.0.1` e storage local ignorado pelo Git;
+- chunker v1 cobre heading paths, paragrafos, overlap adjacente, limite rigido e preservacao de
+  listas, tabelas e code blocks quando cabem;
+- embeddings em lote deduplicam texto exato por SHA-256 antes do provider, sem chamada OpenAI nos
+  testes;
+- tres collections versionadas e sete payload indexes sao criados antes da ingestao, com cosine e
+  dimensao configuravel;
+- sync incremental prova no-op, IDs deterministas, nova geracao validada antes da remocao anterior,
+  delecao somente apos scan completo e rebuild explicito;
+- `IndexRecord` e `RepairTask` persistem no SQLite; falha simulada do Qdrant preserva a geracao
+  anterior e o Markdown e registra apenas erro sanitizado;
+- CLI `index status`, `index sync` e `index rebuild --yes` foi ativada com falha fechada sem
+  credencial de embedding e confirmacao explicita para rebuild;
+- 15 testes novos e 90 testes offline totais passaram; Ruff, lockfile, ambiente locked, build,
+  Compose e scans de TODOs/credenciais passaram;
+- nenhum container Qdrant foi iniciado e nenhuma integracao live, eval, deploy ou credencial real
+  foi usada.
 
 ## T-009 - Implementar OpenAI adapter, prompts e tres agentes
 
@@ -933,11 +954,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.4 | 2026-08-04 | Codex | Clarificada a boundary de T-003 para permitir LangGraph e o checkpointer SQLite somente em `application/graph`, conforme arquitetura ja validada para T-006. |
 | 1.5 | 2026-08-04 | Codex | T-006 concluida no terceiro incremento com LangGraph, fakes, checkpoint SQLite, revision policy e resume offline. |
 | 1.6 | 2026-08-05 | Codex | T-007 concluida no quarto incremento com Vault Core deterministico, escrita atomica, inventario allowlisted e testes offline. |
+| 1.7 | 2026-08-13 | Codex | T-008 concluida na rodada seguinte com chunker v1, embeddings deduplicados, Qdrant local versionado, sync geracional, CLI e evidencias offline. |
 
 ## Proximo passo
 
-Submeter T-007 a revisao humana. T-008 permanece pendente e nao foi executada nesta rodada:
+Submeter T-008 a revisao humana. T-009 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-007 completed -> human review -> T-008 pending
+T-008 completed -> human review -> T-009 pending
 ```

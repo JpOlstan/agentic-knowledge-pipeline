@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -7,8 +8,8 @@ from pathlib import Path
 
 import aiosqlite
 
-from knowledge_agents.domain.contracts import ArtifactRef
-from knowledge_agents.domain.enums import RunStatus
+from knowledge_agents.domain.contracts import ArtifactRef, IndexRecord, RepairTask
+from knowledge_agents.domain.enums import IndexStatus, RepairTarget, RunStatus
 from knowledge_agents.domain.errors import DomainError, ErrorCode
 from knowledge_agents.ports.run_store import CreateRunResult, RunRecord, RunStore
 
@@ -291,6 +292,89 @@ class SqliteRunStore(RunStore):
             )
             await connection.commit()
 
+    async def get_index_record(self, path: str) -> IndexRecord | None:
+        async with self._connection() as connection:
+            cursor = await connection.execute(
+                "SELECT * FROM index_records WHERE path = ?",
+                (path,),
+            )
+            row = await cursor.fetchone()
+            return _index_record(row) if row is not None else None
+
+    async def list_index_records(self) -> tuple[IndexRecord, ...]:
+        async with self._connection() as connection:
+            cursor = await connection.execute("SELECT * FROM index_records ORDER BY path")
+            return tuple(_index_record(row) for row in await cursor.fetchall())
+
+    async def save_index_record(self, record: IndexRecord) -> None:
+        async with self._connection() as connection:
+            await connection.execute(
+                """
+                INSERT INTO index_records(
+                    path, note_id, content_hash, index_fingerprint, collection,
+                    point_ids_json, status, indexed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    note_id = excluded.note_id,
+                    content_hash = excluded.content_hash,
+                    index_fingerprint = excluded.index_fingerprint,
+                    collection = excluded.collection,
+                    point_ids_json = excluded.point_ids_json,
+                    status = excluded.status,
+                    indexed_at = excluded.indexed_at
+                """,
+                (
+                    record.path,
+                    record.note_id,
+                    record.content_hash,
+                    record.index_fingerprint,
+                    record.collection,
+                    json.dumps(record.point_ids, separators=(",", ":")),
+                    record.status.value,
+                    record.indexed_at.isoformat(),
+                ),
+            )
+            await connection.commit()
+
+    async def delete_index_record(self, path: str) -> None:
+        async with self._connection() as connection:
+            await connection.execute("DELETE FROM index_records WHERE path = ?", (path,))
+            await connection.commit()
+
+    async def enqueue_repair(self, task: RepairTask) -> None:
+        async with self._connection() as connection:
+            await connection.execute(
+                """
+                INSERT INTO repair_tasks(
+                    repair_id, run_id, target, status, attempts, next_attempt_at, last_error
+                ) VALUES (?, ?, ?, 'pending', ?, ?, ?)
+                ON CONFLICT(repair_id) DO UPDATE SET
+                    next_attempt_at = excluded.next_attempt_at,
+                    last_error = excluded.last_error
+                """,
+                (
+                    task.repair_id,
+                    task.run_id,
+                    task.target.value,
+                    task.attempts,
+                    task.next_attempt_at.isoformat(),
+                    task.last_error,
+                ),
+            )
+            await connection.commit()
+
+    async def list_repairs(self) -> tuple[RepairTask, ...]:
+        async with self._connection() as connection:
+            cursor = await connection.execute(
+                """
+                SELECT repair_id, run_id, target, attempts, next_attempt_at, last_error
+                FROM repair_tasks
+                WHERE status = 'pending'
+                ORDER BY next_attempt_at, repair_id
+                """
+            )
+            return tuple(_repair_task(row) for row in await cursor.fetchall())
+
     async def replay_run(
         self,
         *,
@@ -327,6 +411,30 @@ def _run_record(row: aiosqlite.Row) -> RunRecord:
         created_at=_parse_datetime(row["created_at"]),
         updated_at=_parse_datetime(row["updated_at"]),
         terminal_at=_parse_datetime(row["terminal_at"]),
+    )
+
+
+def _index_record(row: aiosqlite.Row) -> IndexRecord:
+    return IndexRecord(
+        path=row["path"],
+        note_id=row["note_id"],
+        content_hash=row["content_hash"],
+        index_fingerprint=row["index_fingerprint"],
+        collection=row["collection"],
+        point_ids=tuple(json.loads(row["point_ids_json"])),
+        status=IndexStatus(row["status"]),
+        indexed_at=datetime.fromisoformat(row["indexed_at"]),
+    )
+
+
+def _repair_task(row: aiosqlite.Row) -> RepairTask:
+    return RepairTask(
+        repair_id=row["repair_id"],
+        run_id=row["run_id"],
+        target=RepairTarget(row["target"]),
+        attempts=int(row["attempts"]),
+        next_attempt_at=datetime.fromisoformat(row["next_attempt_at"]),
+        last_error=row["last_error"],
     )
 
 
