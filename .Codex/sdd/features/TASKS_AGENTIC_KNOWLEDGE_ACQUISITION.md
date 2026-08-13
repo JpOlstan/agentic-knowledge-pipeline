@@ -617,7 +617,7 @@ Substituir o LLM fake por Structured Outputs reais mantendo uma chamada por agen
 
 ## T-010 - Implementar WebArticleProvider seguro
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I4  
 **Dependencias:** T-009  
 **Requisitos:** RF-003, RF-004, RF-014, RNF-001, CA-002, CA-007
@@ -648,6 +648,24 @@ Adquirir posts HTTP/HTTPS publicos sem browser, cookies ou JavaScript.
 - suite SSRF cobre IPv4, IPv6, redirect e DNS rebinding simulado;
 - fixture publica sanitizada produz EvidenceBatch deterministico;
 - provider alimenta o mesmo graph usado pelos fakes.
+
+### Evidencia obtida em 2026-08-13
+
+- `WebArticleProvider` implementa `KnowledgeSourceProvider` com HTTP/HTTPS, portas allowlisted,
+  timeout de 30 segundos, no maximo cinco redirects e body de ate 5 MiB;
+- todos os A/AAAA resolvidos sao validados e o transporte HTTPX conecta ao IP publico aprovado,
+  preservando hostname para Host/TLS e eliminando a segunda resolucao vulneravel a rebinding;
+- cada redirect revalida scheme, autoridade, hostname, porta e todos os enderecos DNS;
+- loopback, private, link-local, multicast, reserved, unspecified, IPv4 mapeado em IPv6,
+  credenciais embutidas, fragments e portas nao permitidas falham antes do fetch;
+- Trafilatura 2.2 extrai texto e metadata da fixture sanitizada de forma deterministica, sem
+  browser, JavaScript, cookies ou body publicado;
+- HTML de sucesso nao e persistido; falha de extracao usa nome opaco em runtime ignorado e cleanup
+  por TTL de 24 horas;
+- sete testes do provider e vinte testes de seguranca passaram offline; o provider percorreu o
+  mesmo LangGraph com os tres agentes fake;
+- suite offline totalizou 125 testes verdes e um teste live permaneceu desmarcado;
+- nenhuma URL real foi acessada e nenhuma credencial, integracao live/eval ou deploy foi usado.
 
 ## T-011 - Implementar NotebookLMProvider via MCP read-only
 
@@ -979,11 +997,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.6 | 2026-08-05 | Codex | T-007 concluida no quarto incremento com Vault Core deterministico, escrita atomica, inventario allowlisted e testes offline. |
 | 1.7 | 2026-08-13 | Codex | T-008 concluida na rodada seguinte com chunker v1, embeddings deduplicados, Qdrant local versionado, sync geracional, CLI e evidencias offline. |
 | 1.8 | 2026-08-13 | Codex | T-009 concluida no sexto incremento com Structured Outputs, prompts versionados, contract repair unico, usage e seguranca offline. |
+| 1.9 | 2026-08-13 | Codex | T-010 concluida no setimo incremento com WebArticleProvider, DNS/IP pinning, SSRF, Trafilatura e graph offline. |
 
 ## Proximo passo
 
-Submeter T-009 a revisao humana. T-010 permanece pendente e nao foi executada nesta rodada:
+Submeter T-010 a revisao humana. T-011 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-009 completed -> human review -> T-010 pending
+T-010 completed -> human review -> T-011 pending
 ```
