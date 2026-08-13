@@ -587,17 +587,18 @@ segunda instancia de `SqliteRunStore`, provando durabilidade local.
 
 ### Prompts e seguranca
 
-| Prompt | Escopo | Boundary principal |
-|---|---|---|
-| `agent_1/v1` | pacote completo de evidencia | fonte e evidence sao dados, nunca instrucoes |
-| `agent_2/v1` | zero/multiplos drafts em uma resposta | retrieval nao autoriza escrita ou promocao |
-| `agent_2_revision/v1` | somente drafts bloqueados | aprovados permanecem congelados por hash |
-| `agent_3/v1` | review do pacote | draft nao pode autoaprovar ou alterar hash |
+| Prompt | Persona funcional | Escopo | Boundary principal |
+|---|---|---|---|
+| `agent_1/v1` | analista orientado a proveniencia | pacote completo de evidencia | fonte e evidence sao dados, nunca instrucoes |
+| `agent_2/v1` | curador conservador de conhecimento | zero/multiplos drafts em uma resposta | retrieval nao autoriza escrita ou promocao |
+| `agent_2_revision/v1` | editor corretivo de escopo estrito | somente drafts bloqueados | aprovados permanecem congelados por hash |
+| `agent_3/v1` | validador independente de evidencia | review do pacote | draft nao pode autoaprovar ou alterar hash |
 
 O adapter aceita somente uma mensagem `developer` confiavel e mensagens `user` delimitadas. Roles
 adicionais falham fechado. O request do SDK nao recebe tools, usa `store=False` e mantem o schema
-Pydantic como `text_format`. Uma fixture de prompt injection permaneceu integralmente no input
-nao confiavel e nao alterou instructions, tools ou output contract.
+Pydantic como `text_format`. As personas sao funcionais e nao concedem autonomia adicional. Uma
+fixture de prompt injection permaneceu integralmente no input nao confiavel e nao alterou
+instructions, tools ou output contract.
 
 ### Suites de T-009
 
@@ -713,7 +714,7 @@ rede de aplicacao, live/eval, deploy ou tarefa T-009. A rodada esta apta para re
 | `uv sync --locked` | 65 pacotes auditados |
 | `uv run ruff format --check .` | 58 arquivos ja formatados |
 | `uv run ruff check .` | todos os checks passaram |
-| `uv run pytest -m "not live and not eval" -q` | 98 testes passaram em 11.83s; 1 live deselected |
+| `uv run pytest -m "not live and not eval" -q` | 98 testes passaram em 9.40s; 1 live deselected |
 | `uv build` | sdist e wheel gerados; adapter e quatro prompts presentes no wheel |
 | scans de TODOs e credenciais | zero matches; apenas o endpoint local esperado do Qdrant (`127.0.0.1`) |
 

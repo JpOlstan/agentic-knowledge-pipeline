@@ -603,8 +603,9 @@ Substituir o LLM fake por Structured Outputs reais mantendo uma chamada por agen
 - usage agrega input/output tokens e custo estimado de todas as respostas do contract repair;
   response ID, model, prompt name/version e repair flag ficam no state compacto;
 - manifest registra model ID resolvido por agente e versoes dos quatro prompts;
-- prompts `agent_1`, `agent_2`, `agent_2_revision` e `agent_3` delimitam fonte, retrieval, drafts e
-  evidence como dados nao confiaveis e nao disponibilizam tools;
+- prompts `agent_1`, `agent_2`, `agent_2_revision` e `agent_3` definem personas funcionais curtas,
+  delimitam fonte, retrieval, drafts e evidence como dados nao confiaveis e nao disponibilizam
+  tools;
 - budget e verificado sobre instrucoes, schema/payload e delimitadores antes de cada chamada;
 - happy path preserva tres chamadas principais e o Agente 2 produz multiplas notas numa chamada;
   revisao envia somente drafts bloqueados pelo prompt dedicado;

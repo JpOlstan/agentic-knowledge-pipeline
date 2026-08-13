@@ -185,6 +185,26 @@ def test_all_versioned_prompts_define_schema_and_untrusted_data_boundary() -> No
     assert all("UNTRUSTED_DATA" in prompt.instructions for prompt in prompts)
     assert all("schema" in prompt.instructions.lower() for prompt in prompts)
     assert all("tool" in prompt.instructions.lower() for prompt in prompts)
+    assert all("## Role" in prompt.instructions for prompt in prompts)
+    assert all("You are" in prompt.instructions for prompt in prompts)
+    assert {
+        prompt.name: next(
+            marker
+            for marker in (
+                "provenance-first evidence analyst",
+                "conservative knowledge curator",
+                "strictly scoped corrective editor",
+                "independent evidence validator",
+            )
+            if marker in prompt.instructions
+        )
+        for prompt in prompts
+    } == {
+        "agent_1": "provenance-first evidence analyst",
+        "agent_2": "conservative knowledge curator",
+        "agent_2_revision": "strictly scoped corrective editor",
+        "agent_3": "independent evidence validator",
+    }
 
 
 def test_settings_configure_model_reasoning_and_output_per_agent() -> None:
