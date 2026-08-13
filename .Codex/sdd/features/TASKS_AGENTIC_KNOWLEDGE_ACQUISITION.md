@@ -725,7 +725,7 @@ Integrar o proxy MCP NotebookLM existente sem expor tools mutaveis aos agentes.
 
 ## T-012 - Implementar QueuePort SQS e worker local
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I5  
 **Dependencias:** T-005, T-006  
 **Requisitos:** RF-002, RF-009, RF-011, RF-015, CA-005, CA-008
@@ -757,6 +757,23 @@ Consumir SQS Standard localmente com long polling, heartbeat, leases e ack termi
 - duplicate delivery nao repete node concluido;
 - perda de heartbeat permite redelivery e resume;
 - worker usa fakes em teste default e SQS real somente em live.
+
+### Evidencia obtida em 2026-08-13
+
+- `SqsQueue` encapsula o client boto3 sincrono fora do event loop, usa long polling de 20 segundos,
+  visibility inicial de 180 segundos e converte respostas em `QueueMessage` sem expor queue URL;
+- envelope SQS e limitado a 16 KiB e revalidado com schema estrito, versao, timestamp timezone-aware,
+  URL, IDs, campos extras proibidos e chaves JSON duplicadas rejeitadas;
+- worker cria ou recupera o run e adquire lease duravel antes de iniciar o executor do graph;
+- heartbeat renova primeiro a lease SQLite e somente depois estende a visibility SQS por 180 segundos;
+- falha do executor libera visibility; perda de heartbeat cancela a execucao e permite o timeout para
+  redelivery segura, preservando o mesmo run para resume;
+- mensagem e deletada somente quando o `RunStore` confirma status terminal persistido;
+- entrega duplicada terminal com SQLite real foi reconhecida sem segunda execucao do graph;
+- shutdown observado apos o poll libera a mensagem sem iniciar um novo run;
+- oito casos offline novos passaram; suite completa totalizou 153 testes verdes e dois testes live
+  permaneceram desmarcados;
+- AWS/SQS real, testes live/eval, deploy e credenciais reais nao foram usados.
 
 ## T-013 - Implementar Lambda trigger e Terraform
 
@@ -1020,11 +1037,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.8 | 2026-08-13 | Codex | T-009 concluida no sexto incremento com Structured Outputs, prompts versionados, contract repair unico, usage e seguranca offline. |
 | 1.9 | 2026-08-13 | Codex | T-010 concluida no setimo incremento com WebArticleProvider, DNS/IP pinning, SSRF, Trafilatura e graph offline. |
 | 2.0 | 2026-08-13 | Codex | T-011 concluida no oitavo incremento com MCP stdio controlado, allowlist read-only, registry supervisionado, doctor e testes offline. |
+| 2.1 | 2026-08-13 | Codex | T-012 concluida no nono incremento com adapter SQS, worker local, leases, heartbeat, ack terminal e testes offline. |
 
 ## Proximo passo
 
-Submeter T-011 a revisao humana. T-012 permanece pendente e nao foi executada nesta rodada:
+Submeter T-012 a revisao humana. T-013 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-011 completed -> human review -> T-012 pending
+T-012 completed -> human review -> T-013 pending
 ```

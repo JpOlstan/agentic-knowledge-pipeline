@@ -12,6 +12,7 @@ license = "MIT"
 authors = [{ name = "JpOlstan" }]
 dependencies = [
     "aiosqlite>=0.21,<1",
+    "boto3>=1.40,<2",
     "httpcore>=1.0,<2",
     "httpx>=0.28,<1",
     "langgraph>=1.2,<2",
