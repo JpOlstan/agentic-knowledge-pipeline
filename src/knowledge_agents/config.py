@@ -44,6 +44,21 @@ class Settings(BaseSettings):
     langfuse_public_key: SecretStr | None = None
     langfuse_secret_key: SecretStr | None = None
 
+    notebooklm_node_executable: str = "node"
+    notebooklm_proxy_path: Path | None = None
+    notebooklm_runtime_package_json: Path | None = None
+    notebooklm_data_dir: Path | None = None
+    notebooklm_registry_status: Literal[
+        "proposed",
+        "evaluating",
+        "approved-read-only",
+        "approved-limited-write",
+        "blocked",
+        "disabled",
+        "deprecated",
+    ] = "evaluating"
+    notebooklm_supervised: bool = True
+
     max_input_tokens_per_call: int = Field(default=48_000, gt=0)
     max_main_calls: int = Field(default=7, gt=0)
     max_input_tokens_per_run: int = Field(default=250_000, gt=0)

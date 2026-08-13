@@ -669,7 +669,7 @@ Adquirir posts HTTP/HTTPS publicos sem browser, cookies ou JavaScript.
 
 ## T-011 - Implementar NotebookLMProvider via MCP read-only
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I4  
 **Dependencias:** T-009  
 **Requisitos:** RF-003, RF-004, RF-013, RF-014, RNF-001, CA-001
@@ -701,6 +701,27 @@ Integrar o proxy MCP NotebookLM existente sem expor tools mutaveis aos agentes.
 - testes default usam fake MCP;
 - live smoke test read-only e manual;
 - nenhum tool de escrita, delete, upload, batch ou cleanup e invocavel pelo provider.
+
+### Evidencia obtida em 2026-08-13
+
+- cliente JSON-RPC 2.0 stdio inicia e encerra subprocesso sem shell, limita mensagens e timeout,
+  descarta stderr e herda somente variaveis operacionais allowlisted;
+- handshake, `tools/list` e `server_health` sao obrigatorios antes de inspecao ou aquisicao;
+- allowlist do DESIGN permanece como unica superficie invocavel pelo provider; leituras locais
+  adicionais registradas podem ser anunciadas, mas nao sao chamadas pelo provider;
+- qualquer tool fora do registry read-only, incluindo escrita, delete, upload, batch ou cleanup,
+  bloqueia o provider antes do health check;
+- runtime exige `@roomi-fields/notebooklm-mcp` 2.1.0 e status `evaluating` somente em modo
+  supervisionado; uso nao supervisionado exige `approved-read-only`;
+- link compartilhado e validado para HTTPS e host NotebookLM, reduzido a referencia opaca nos
+  contratos e redigido se for ecoado por respostas;
+- `content_list` exige exatamente uma fonte e `notebook_ask` produz `EvidenceBatch` versionado com
+  budget de bytes, citacoes opacas e sem session ID persistido;
+- doctor ganhou checks offline de Node, proxy, package, data dir e compatibilidade do registry;
+- dezoito testes MCP/provider e dois testes novos do doctor passaram offline; suite completa
+  totalizou 145 testes verdes e dois testes live permaneceram desmarcados;
+- smoke NotebookLM permaneceu `skip`; proxy real, cookies, sessao, URL real, rede, credenciais e
+  deploy nao foram usados.
 
 ## T-012 - Implementar QueuePort SQS e worker local
 
@@ -998,11 +1019,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.7 | 2026-08-13 | Codex | T-008 concluida na rodada seguinte com chunker v1, embeddings deduplicados, Qdrant local versionado, sync geracional, CLI e evidencias offline. |
 | 1.8 | 2026-08-13 | Codex | T-009 concluida no sexto incremento com Structured Outputs, prompts versionados, contract repair unico, usage e seguranca offline. |
 | 1.9 | 2026-08-13 | Codex | T-010 concluida no setimo incremento com WebArticleProvider, DNS/IP pinning, SSRF, Trafilatura e graph offline. |
+| 2.0 | 2026-08-13 | Codex | T-011 concluida no oitavo incremento com MCP stdio controlado, allowlist read-only, registry supervisionado, doctor e testes offline. |
 
 ## Proximo passo
 
-Submeter T-010 a revisao humana. T-011 permanece pendente e nao foi executada nesta rodada:
+Submeter T-011 a revisao humana. T-012 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-010 completed -> human review -> T-011 pending
+T-011 completed -> human review -> T-012 pending
 ```
