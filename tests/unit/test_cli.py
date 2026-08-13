@@ -69,3 +69,24 @@ def test_future_side_effect_commands_fail_as_explicit_preconditions() -> None:
 
     assert result.exit_code == 2
     assert "precondition_failed operation=runs.list" in result.output
+
+
+def test_index_sync_fails_closed_without_embedding_credentials(
+    tmp_path: Path,
+    monkeypatch: object,
+) -> None:
+    configure_local_profile(monkeypatch, tmp_path)
+
+    result = runner.invoke(app, ["index", "sync", "--json"])
+
+    assert result.exit_code == 2
+    report = json.loads(result.stdout)
+    assert report["message"] == "embedding_credentials_required"
+
+
+def test_index_rebuild_requires_explicit_confirmation() -> None:
+    result = runner.invoke(app, ["index", "rebuild", "--json"])
+
+    assert result.exit_code == 2
+    report = json.loads(result.stdout)
+    assert report["message"] == "confirmation_required"

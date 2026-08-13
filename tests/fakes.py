@@ -9,6 +9,8 @@ from knowledge_agents.domain.contracts import (
     AcquisitionRequest,
     ArtifactRef,
     EvidenceBatch,
+    IndexRecord,
+    RepairTask,
     SourceDescriptor,
 )
 from knowledge_agents.domain.enums import RunStatus
@@ -101,6 +103,8 @@ class FakeRunStore(FakeBase, RunStore):
         self.records: dict[str, RunRecord] = {}
         self.idempotency: dict[str, str] = {}
         self.artifacts: dict[str, list[ArtifactRef]] = {}
+        self.index_records: dict[str, IndexRecord] = {}
+        self.repairs: dict[str, RepairTask] = {}
 
     async def migrate(self) -> tuple[int, ...]:
         self._record("migrate")
@@ -244,6 +248,30 @@ class FakeRunStore(FakeBase, RunStore):
         self._record("record_artifact", run_id=run_id, artifact=artifact)
         self.artifacts.setdefault(run_id, []).append(artifact)
 
+    async def get_index_record(self, path: str) -> IndexRecord | None:
+        self._record("get_index_record", path=path)
+        return self.index_records.get(path)
+
+    async def list_index_records(self) -> tuple[IndexRecord, ...]:
+        self._record("list_index_records")
+        return tuple(self.index_records[path] for path in sorted(self.index_records))
+
+    async def save_index_record(self, record: IndexRecord) -> None:
+        self._record("save_index_record", record=record)
+        self.index_records[record.path] = record
+
+    async def delete_index_record(self, path: str) -> None:
+        self._record("delete_index_record", path=path)
+        self.index_records.pop(path, None)
+
+    async def enqueue_repair(self, task: RepairTask) -> None:
+        self._record("enqueue_repair", task=task)
+        self.repairs[task.repair_id] = task
+
+    async def list_repairs(self) -> tuple[RepairTask, ...]:
+        self._record("list_repairs")
+        return tuple(self.repairs[key] for key in sorted(self.repairs))
+
     async def replay_run(
         self,
         *,
@@ -346,6 +374,12 @@ class FakeVectorIndex(FakeBase, VectorIndex):
         super().__init__(failures=failures)
         self.documents: dict[str, IndexDocument] = {}
         self.hits = hits
+        self.collections_ready = False
+        self.rebuild_count = 0
+
+    async def ensure_collections(self) -> None:
+        self._record("ensure_collections")
+        self.collections_ready = True
 
     async def upsert(self, documents: tuple[IndexDocument, ...]) -> tuple[str, ...]:
         self._record("upsert", documents=documents)
@@ -361,6 +395,26 @@ class FakeVectorIndex(FakeBase, VectorIndex):
         self._record("delete", collection=collection, point_ids=point_ids)
         for point_id in point_ids:
             self.documents.pop(point_id, None)
+
+    async def validate(self, *, collection: str, point_ids: tuple[str, ...]) -> bool:
+        self._record("validate", collection=collection, point_ids=point_ids)
+        return all(
+            point_id in self.documents and self.documents[point_id].collection == collection
+            for point_id in point_ids
+        )
+
+    async def recreate_collections(self) -> None:
+        self._record("recreate_collections")
+        self.documents.clear()
+        self.collections_ready = True
+        self.rebuild_count += 1
+
+    async def collection_counts(self) -> dict[str, int]:
+        self._record("collection_counts")
+        counts: dict[str, int] = {}
+        for document in self.documents.values():
+            counts[document.collection] = counts.get(document.collection, 0) + 1
+        return counts
 
 
 class FakeTelemetry(FakeBase, TelemetryPort):

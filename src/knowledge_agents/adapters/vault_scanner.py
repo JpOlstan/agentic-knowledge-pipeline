@@ -41,6 +41,9 @@ class VaultScanner:
     async def scan(self) -> VaultInventory:
         return await asyncio.to_thread(self._scan)
 
+    async def read_markdown(self, relative_path: str) -> str:
+        return await asyncio.to_thread(self._read_markdown, relative_path)
+
     def _scan(self) -> VaultInventory:
         root = self.vault_root.resolve()
         entries: list[VaultEntry] = []
@@ -100,6 +103,19 @@ class VaultScanner:
         if not resolved.is_relative_to(root):
             raise DomainError(ErrorCode.PATH_TRAVERSAL_BLOCKED, "vault_scanner.path")
         return current
+
+    def _read_markdown(self, relative_path: str) -> str:
+        normalized = _validated_relative_path(relative_path)
+        relative = PurePosixPath(normalized)
+        if not any(
+            relative == PurePosixPath(allowed) or relative.is_relative_to(PurePosixPath(allowed))
+            for allowed in self.allowed_paths
+        ):
+            raise DomainError(ErrorCode.ACCESS_DENIED, "vault_scanner.read")
+        path = self._safe_target(normalized)
+        if path.suffix.lower() != ".md" or path.is_symlink() or not path.is_file():
+            raise DomainError(ErrorCode.ACCESS_DENIED, "vault_scanner.read")
+        return path.read_text(encoding="utf-8")
 
 
 def _validated_relative_path(value: str) -> str:

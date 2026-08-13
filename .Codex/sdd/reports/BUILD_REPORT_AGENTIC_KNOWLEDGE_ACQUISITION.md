@@ -4,7 +4,7 @@ area: ai-for-data-engineering
 domain: agentic-knowledge-acquisition
 status: in-progress
 created: 2026-07-21
-updated: 2026-08-05
+updated: 2026-08-13
 tags: [workflow/build, topic/knowledge-acquisition, evidence/traceability]
 related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISITION]
 ---
@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi executado na branch `codex/increment-4-vault-core`: T-007 esta concluida com gates offline verdes. T-008 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A rodada seguinte foi executada na branch `codex/increment-5-qdrant-local`: T-008 esta concluida com gates offline verdes e o incremento I2 esta completo. T-009 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -72,6 +72,23 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo da quinta rodada
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-5-qdrant-local` |
+| Commit base | `43b7dba` |
+| Tarefas autorizadas | `T-008` |
+| Tarefas executadas | `T-008` |
+| Tarefas fora do escopo | `T-009` a `T-017` |
+| Qdrant | somente adapter com fake; container nao iniciado |
+| OpenAI | somente adapter com client fake; API nao chamada |
+| Vault usado | somente Markdown em diretorios temporarios |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -98,7 +115,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 |---|---|---|
 | I0 | completed | T-001, bootstrap e gates reproduziveis |
 | I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
-| I2 | in progress | T-007 concluida; T-008 pendente |
+| I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
 | I3 | pending | nenhuma |
 | I4 | pending | nenhuma |
 | I5 | pending | nenhuma |
@@ -166,6 +183,25 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
   integral dos drafts;
 - todos os testes usaram apenas vaults temporarios e contracts locais, sem ler ou alterar o vault
   real.
+
+### 2026-08-13 - Quinta rodada: T-008
+
+- PR #4 confirmado como mergeado e `main` sincronizada por fast-forward para `43b7dba`;
+- criada a branch `codex/increment-5-qdrant-local` a partir da `main` mergeada;
+- implementado chunker v1 deterministico com heading path, source locator, target 800, maximo 1.200,
+  overlap 120 e preservacao de estruturas Markdown indivisiveis quando cabem;
+- implementado adapter de embeddings em lote com deduplicacao exata por SHA-256 e dimensao
+  configuravel; testes usam client injetado e nao chamam OpenAI;
+- implementado adapter Qdrant com cosine, tres collections versionadas, sete payload indexes,
+  validacao de schema e operacoes de consulta, validacao, remocao e rebuild;
+- implementado `IndexService` com fingerprint de modelo/dimensao/chunker/schema, point IDs
+  deterministicos, no-op, troca segura de geracao e bloqueio de delecao/rebuild sob scan incompleto;
+- ativados `index status`, `index sync` e `index rebuild --yes`, com precondicoes fechadas e saida
+  sanitizada;
+- estendidos RunStore, SQLite e fakes para persistir `IndexRecord` e `RepairTask` sobre o schema ja
+  criado em T-004, sem migration adicional;
+- fixado `qdrant/qdrant:v1.18.2` em Compose com bind somente em loopback e volume ignorado;
+- nenhum container, endpoint Qdrant, API OpenAI, vault real ou outra integracao foi executado.
 
 ## Evidencias de T-001
 
@@ -441,6 +477,61 @@ Issues, required changes e corpos dos drafts nao sao copiados para esse resumo.
 | RNF-001 | allowlist, containment, symlink e ausencia de APIs de promocao/Git | gate concluido |
 | RNF-002 | hash revisado, idempotencia por bytes e colisao fechada | gate concluido |
 
+## Evidencias de T-008
+
+### Chunking, embeddings e schema Qdrant
+
+| Controle | Evidencia |
+|---|---|
+| Chunker v1 | heading + paragrafo, target 800, maximo 1.200 e overlap 120 adjacente |
+| Estruturas Markdown | listas, tabelas e code blocks permanecem inteiros quando cabem |
+| Metadados | document ID, heading path, source locator, document hash e chunk hash separados |
+| Deduplicacao | textos identicos geram uma unica entrada no batch de embeddings |
+| Collections | `knowledge_evidence_v1`, `knowledge_drafts_v1`, `knowledge_notes_v1` |
+| Vetores | cosine e dimensao derivada da configuracao de embedding |
+| Payload indexes | `document_id`, `run_id`, `source_type`, `status`, `path`, `content_hash`, `generation` |
+| Container | `qdrant/qdrant:v1.18.2`, portas 6333/6334 somente em `127.0.0.1` |
+
+### Sincronizacao geracional
+
+| Cenario | Resultado |
+|---|---|
+| Documento inalterado | point IDs validados; zero novo upsert |
+| Documento alterado | nova generation e point IDs deterministas |
+| Validacao da nova generation falha | record e pontos anteriores permanecem ativos |
+| Nova generation valida | record novo persiste antes da limpeza da anterior |
+| Limpeza anterior falha | generation nova permanece valida e repair e registrado |
+| Scan incompleto | nenhum documento ausente e removido |
+| Scan completo | ausentes sao removidos do Qdrant e SQLite |
+| Rebuild incompleto | operacao bloqueada antes de apagar collections |
+| Qdrant indisponivel | repair sanitizado; Markdown e drafts permanecem inalterados |
+| Alteracao no indice | nenhuma API de escrita no vault e invocada |
+
+O `index_fingerprint` muda independentemente com alteracao do model ID, dimensao, configuracao ou
+versao do chunker e schema da collection. `IndexRecord` e repair pendente foram reabertos por uma
+segunda instancia de `SqliteRunStore`, provando durabilidade local.
+
+### Suites de T-008
+
+| Suite | Casos novos | Resultado |
+|---|---:|---|
+| `tests/unit/test_chunker.py` | 4 | passou |
+| `tests/integration/test_index_sync.py` | 9 | passou |
+| `tests/unit/test_cli.py` | 2 | passou |
+| **Total T-008** | **15** | **passou sem rede** |
+| **Suite offline total** | **90** | **passou sem skips** |
+
+### Rastreabilidade parcial da quinta rodada
+
+| Requisito | Evidencia desta rodada | Estado |
+|---|---|---|
+| RF-010 | collections separadas, no-op, generation swap, incomplete scan e rebuild | concluido |
+| RF-011 / CA-006 | falha secundaria cria repair seguro sem perder generation ou Markdown | base Qdrant concluida; executor generico de repairs em T-014 |
+| RF-015 | comandos index status/sync/rebuild com precondicoes explicitas | concluido para indice |
+| RNF-002 | fingerprint, point IDs, hashes e swap deterministicos | gate concluido |
+| RNF-004 | Qdrant e OpenAI substituidos por fakes nos testes default | gate concluido |
+| RNF-005 | application depende dos ports; SDKs permanecem nos adapters | gate concluido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -507,6 +598,23 @@ incremento esta apto para revisao humana, commit e draft PR.
 Conclusao: T-007 atende ao DESIGN sem acessar vault real, rede, SDK externo ou tarefas de T-008.
 O incremento esta apto para revisao humana, commit e draft PR.
 
+## Gate da quinta rodada
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-008 | 7 de 7 arquivos declarados presentes |
+| `uv lock --check` | 65 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 65 pacotes auditados |
+| `uv run ruff format --check .` | 53 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| `uv run pytest -m "not live and not eval" -q` | 90 testes passaram em 18.07s, zero skips |
+| `docker compose -f docker-compose.qdrant.yml config --quiet` | Compose valido; nenhum service iniciado |
+| `uv build` | sdist e wheel gerados; quatro modulos T-008 presentes no wheel |
+| scans de TODOs, credenciais e URLs privadas | zero matches |
+
+Conclusao: T-008 atende ao DESIGN com doubles offline, sem executar Qdrant, OpenAI, vault real,
+rede de aplicacao, live/eval, deploy ou tarefa T-009. A rodada esta apta para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -516,9 +624,13 @@ LangGraph, checkpoint e `aiosqlite` ficam confinados a `application/graph`. O he
 suporte necessario para os cenarios offline. Na T-007, o staging fixo e automaticamente incluido
 na allowlist interna do writer para que idempotencia e colisao entre runs sejam sempre verificadas;
 roots canonicos adicionais continuam explicitamente allowlisted pelo chamador. Nenhuma integracao
-da aplicacao foi executada.
+da aplicacao foi executada. Na T-008, `config.py`, `cli.py`, ports, SQLiteRunStore, VaultScanner,
+fakes, `pyproject.toml` e `uv.lock` foram atualizados como suporte necessario aos arquivos declarados:
+dimensao de embedding, comandos index, estado duravel, leitura Markdown allowlisted e dependencias
+isoladas nos adapters. O schema SQLite existente ja continha `index_records` e `repair_tasks`, por
+isso nenhuma migration nova foi necessaria.
 
 ## Proximo passo
 
-Submeter T-007 a revisao humana. T-008 e a proxima tarefa de dependencia, mas nao foi autorizada
+Submeter T-008 a revisao humana. T-009 e a proxima tarefa de dependencia, mas nao foi autorizada
 nem iniciada nesta execucao.
