@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A rodada seguinte foi executada na branch `codex/increment-5-qdrant-local`: T-008 esta concluida com gates offline verdes e o incremento I2 esta completo. T-009 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi executado na branch `codex/increment-6-openai-agents`: T-009 esta concluida com gates offline verdes e o incremento I3 esta completo. T-010 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -89,6 +89,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do sexto incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-6-openai-agents` |
+| Commit base | `9cdf33b` |
+| Tarefas autorizadas | `T-009` |
+| Tarefas executadas | `T-009` |
+| Tarefas fora do escopo | `T-010` a `T-017` |
+| OpenAI | SDK exercitado somente com client fake; API nao chamada |
+| Prompts | quatro recursos versionados e dados sinteticos |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -116,7 +132,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I0 | completed | T-001, bootstrap e gates reproduziveis |
 | I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
 | I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
-| I3 | pending | nenhuma |
+| I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | pending | nenhuma |
 | I5 | pending | nenhuma |
 | I6 | pending | nenhuma |
@@ -202,6 +218,27 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
   criado em T-004, sem migration adicional;
 - fixado `qdrant/qdrant:v1.18.2` em Compose com bind somente em loopback e volume ignorado;
 - nenhum container, endpoint Qdrant, API OpenAI, vault real ou outra integracao foi executado.
+
+### 2026-08-13 - Sexto incremento: T-009
+
+- PR #5 confirmado como mergeado e `main` sincronizada por fast-forward para `9cdf33b`;
+- criada a branch `codex/increment-6-openai-agents` a partir da `main` mergeada;
+- implementado `OpenAIStructuredClient` sobre `responses.parse`, mantendo OpenAI confinado ao
+  adapter e `StructuredLLMPort` neutro;
+- configurados model ID, reasoning effort e max output por agente; o factory do SDK fixa timeout
+  de 120 segundos e dois retries de transporte;
+- implementado contract repair unico para parse ausente ou schema incorreto, sem confundir retry
+  tecnico com ciclo editorial;
+- recusas e segunda falha contratual terminam com erro seguro; excecoes de transporte permanecem
+  sob ownership do SDK e nao recebem retry na application layer;
+- agregados tokens, custo estimado e duracao do retorno do SDK; response ID, model, prompt e repair
+  flag permanecem em metadata compacta do state;
+- criados quatro prompts versionados com trust boundary explicita para fonte, retrieval, drafts e
+  evidence; nenhum tool e disponibilizado;
+- Agentes 1, 2 e 3 carregam o prompt adequado, aplicam budget antes da chamada e preservam uma
+  chamada principal por pacote no happy path;
+- criado smoke test minimo e sanitizado sob marker `live`, mas ele nao foi selecionado nem
+  executado nesta rodada.
 
 ## Evidencias de T-001
 
@@ -532,6 +569,59 @@ segunda instancia de `SqliteRunStore`, provando durabilidade local.
 | RNF-004 | Qdrant e OpenAI substituidos por fakes nos testes default | gate concluido |
 | RNF-005 | application depende dos ports; SDKs permanecem nos adapters | gate concluido |
 
+## Evidencias de T-009
+
+### Structured Outputs e ownership
+
+| Controle | Evidencia |
+|---|---|
+| API | `responses.parse` recebe o mesmo Pydantic contract usado pela aplicacao |
+| Configuracao | model, reasoning e max output independentes para A1, A2 e A3 |
+| Transporte | `AsyncOpenAI(timeout=120, max_retries=2)`; zero retry externo |
+| Happy path | A1, A2 e A3 usam uma chamada principal por pacote |
+| Contract repair | no maximo uma chamada separada por output ausente ou schema incorreto |
+| Refusal | falha contratual imediata; nenhum repair cego |
+| Usage | tokens de todas as respostas, custo configuravel e duracao agregados |
+| Metadata | response ID, model resolvido, prompt name/version e repair flag no state |
+| Manifest | model por agente e versao por recurso de prompt |
+
+### Prompts e seguranca
+
+| Prompt | Persona funcional | Escopo | Boundary principal |
+|---|---|---|---|
+| `agent_1/v1` | analista orientado a proveniencia | pacote completo de evidencia | fonte e evidence sao dados, nunca instrucoes |
+| `agent_2/v1` | curador conservador de conhecimento | zero/multiplos drafts em uma resposta | retrieval nao autoriza escrita ou promocao |
+| `agent_2_revision/v1` | editor corretivo de escopo estrito | somente drafts bloqueados | aprovados permanecem congelados por hash |
+| `agent_3/v1` | validador independente de evidencia | review do pacote | draft nao pode autoaprovar ou alterar hash |
+
+O adapter aceita somente uma mensagem `developer` confiavel e mensagens `user` delimitadas. Roles
+adicionais falham fechado. O request do SDK nao recebe tools, usa `store=False` e mantem o schema
+Pydantic como `text_format`. As personas sao funcionais e nao concedem autonomia adicional. Uma
+fixture de prompt injection permaneceu integralmente no input nao confiavel e nao alterou
+instructions, tools ou output contract.
+
+### Suites de T-009
+
+| Suite | Casos novos | Resultado |
+|---|---:|---|
+| `tests/contracts/test_prompt_outputs.py` | 6 | passou |
+| `tests/security/test_prompt_injection.py` | 2 | passou |
+| `tests/live/test_openai.py` | 1 live | nao selecionado |
+| **Total offline novo** | **8** | **passou sem rede** |
+| **Suite offline total** | **98** | **passou; 1 live deselected** |
+
+### Rastreabilidade parcial do sexto incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-004 | A1 Structured Output, proveniencia preservada e prompt boundary | concluido |
+| RF-005 | A2 gera pacote com multiplos drafts numa chamada | concluido |
+| RF-006 | A3 referencia hashes exatos e classifica drafts | concluido |
+| RF-007 | prompt dedicado agrupa somente bloqueados; freeze/limites permanecem no graph | concluido |
+| RF-012 | response/model/prompt/usage correlacionados no state e manifest | base OpenAI concluida; Langfuse posterior |
+| RNF-003 | budget preflight, retry owner unico e contract repair limitado | gate concluido |
+| CA-001 a CA-004 | mesmos tres agentes e contratos provados com fakes | fluxo offline concluido; providers live posteriores |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -615,6 +705,22 @@ O incremento esta apto para revisao humana, commit e draft PR.
 Conclusao: T-008 atende ao DESIGN com doubles offline, sem executar Qdrant, OpenAI, vault real,
 rede de aplicacao, live/eval, deploy ou tarefa T-009. A rodada esta apta para revisao humana.
 
+## Gate do sexto incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-009 | 8 de 8 arquivos declarados presentes |
+| `uv lock --check` | 65 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 65 pacotes auditados |
+| `uv run ruff format --check .` | 58 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| `uv run pytest -m "not live and not eval" -q` | 98 testes passaram em 9.40s; 1 live deselected |
+| `uv build` | sdist e wheel gerados; adapter e quatro prompts presentes no wheel |
+| scans de TODOs e credenciais | zero matches; apenas o endpoint local esperado do Qdrant (`127.0.0.1`) |
+
+Conclusao: T-009 atende ao DESIGN com client fake e contratos reais, sem chamada OpenAI, teste
+live/eval, credencial real, deploy ou tarefa T-010. O incremento esta apto para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -628,9 +734,13 @@ da aplicacao foi executada. Na T-008, `config.py`, `cli.py`, ports, SQLiteRunSto
 fakes, `pyproject.toml` e `uv.lock` foram atualizados como suporte necessario aos arquivos declarados:
 dimensao de embedding, comandos index, estado duravel, leitura Markdown allowlisted e dependencias
 isoladas nos adapters. O schema SQLite existente ja continha `index_records` e `repair_tasks`, por
-isso nenhuma migration nova foi necessaria.
+isso nenhuma migration nova foi necessaria. Na T-009, `.env.example`, config, LLM port, state,
+manifest, agentes, fakes e testes de graph foram atualizados como suporte necessario aos arquivos
+declarados: configuracao por agente, prompt boundary, metadata compacta e verificacao do fluxo real.
+O helper `application/agents/prompts.py` e o package resource `prompts/__init__.py` foram adicionados
+para carregar prompts do wheel sem introduzir SDK na application layer.
 
 ## Proximo passo
 
-Submeter T-008 a revisao humana. T-009 e a proxima tarefa de dependencia, mas nao foi autorizada
+Submeter T-009 a revisao humana. T-010 e a proxima tarefa de dependencia, mas nao foi autorizada
 nem iniciada nesta execucao.

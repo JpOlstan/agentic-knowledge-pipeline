@@ -53,6 +53,19 @@ def test_happy_path_uses_three_calls_and_keeps_large_content_out_of_state(
         manifest_ref = decode_artifact_ref(state["manifest_ref"])
         manifest = RunManifest.model_validate(await harness.artifacts.read_json(manifest_ref))
         assert manifest.usage.call_count == 3
+        assert manifest.models == {
+            "agent_1": "fake-model",
+            "agent_2": "fake-model",
+            "agent_3": "fake-model",
+        }
+        assert manifest.versions["prompt.agent_1"] == "v1"
+        assert manifest.versions["prompt.agent_2"] == "v1"
+        assert manifest.versions["prompt.agent_3"] == "v1"
+        assert [record["response_id"] for record in state["llm_records"]] == [
+            "fake-response-1",
+            "fake-response-2",
+            "fake-response-3",
+        ]
         assert manifest.outcome is RunOutcome.COMPLETED
         assert checkpoint_path.exists()
 

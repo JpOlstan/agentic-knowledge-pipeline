@@ -4,6 +4,7 @@ from typing import Any, NotRequired, TypedDict
 
 from knowledge_agents.domain.budgets import CallUsage, ContextBudget, UsageLedger
 from knowledge_agents.domain.contracts import ArtifactRef
+from knowledge_agents.domain.enums import AgentRole
 
 
 class RunState(TypedDict):
@@ -25,6 +26,7 @@ class RunState(TypedDict):
     previous_issue_fingerprint: str | None
     context_budget: dict[str, int | float]
     usage_entries: list[dict[str, Any]]
+    llm_records: list[dict[str, Any]]
     warnings: list[str]
     route: NotRequired[str]
     outcome: str | None
@@ -48,6 +50,7 @@ def initial_run_state(
         previous_issue_fingerprint=None,
         context_budget=budget.model_dump(mode="json"),
         usage_entries=[],
+        llm_records=[],
         warnings=[],
         outcome=None,
     )
@@ -73,3 +76,26 @@ def usage_ledger(state: RunState) -> UsageLedger:
 
 def append_usage(state: RunState, usage: CallUsage) -> list[dict[str, Any]]:
     return [*state["usage_entries"], usage.model_dump(mode="json")]
+
+
+def append_llm_record(
+    state: RunState,
+    *,
+    agent: AgentRole,
+    response_id: str,
+    model: str,
+    prompt_name: str,
+    prompt_version: str,
+    contract_repaired: bool,
+) -> list[dict[str, Any]]:
+    return [
+        *state["llm_records"],
+        {
+            "agent": agent.value,
+            "response_id": response_id,
+            "model": model,
+            "prompt_name": prompt_name,
+            "prompt_version": prompt_version,
+            "contract_repaired": contract_repaired,
+        },
+    ]

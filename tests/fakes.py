@@ -13,7 +13,7 @@ from knowledge_agents.domain.contracts import (
     RepairTask,
     SourceDescriptor,
 )
-from knowledge_agents.domain.enums import RunStatus
+from knowledge_agents.domain.enums import AgentRole, RunStatus
 from knowledge_agents.domain.hashing import canonical_sha256
 from knowledge_agents.ports.artifacts import ArtifactStore
 from knowledge_agents.ports.llm import OutputT, StructuredLLMPort, StructuredResult
@@ -85,10 +85,18 @@ class FakeStructuredLLM(FakeBase, StructuredLLMPort):
     async def parse(
         self,
         *,
+        agent: AgentRole,
+        prompt_version: str,
         prompt: tuple[dict[str, Any], ...],
         output_type: type[OutputT],
     ) -> StructuredResult[OutputT]:
-        self._record("parse", prompt=prompt, output_type=output_type)
+        self._record(
+            "parse",
+            agent=agent,
+            prompt_version=prompt_version,
+            prompt=prompt,
+            output_type=output_type,
+        )
         if not self.results:
             raise LookupError("no fake LLM result configured")
         result = self.results.pop(0)
