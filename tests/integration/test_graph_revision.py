@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 from tests.graph_scenarios import (
@@ -51,7 +52,10 @@ def test_one_revision_sends_only_blocked_draft_and_freezes_approved_hash(
                 idempotency_key=IDEMPOTENCY_KEY,
             )
 
-        revision_prompt = harness.llm.calls[3].arguments["prompt"][0]["content"]
+        user_content = harness.llm.calls[3].arguments["prompt"][1]["content"]
+        revision_prompt = json.loads(
+            user_content.removeprefix("<UNTRUSTED_DATA>\n").removesuffix("\n</UNTRUSTED_DATA>")
+        )
         assert [item["note_id"] for item in revision_prompt["blocked_drafts"]] == ["note-b"]
         assert "note-a" not in str(revision_prompt["blocked_drafts"])
         package_ref = decode_artifact_ref(state["draft_package_ref"])
@@ -62,6 +66,7 @@ def test_one_revision_sends_only_blocked_draft_and_freezes_approved_hash(
         assert state["revision_count"] == 1
         assert state["outcome"] == RunOutcome.COMPLETED.value
         assert len(harness.llm.calls) == 5
+        assert state["llm_records"][3]["prompt_name"] == "agent_2_revision"
 
     asyncio.run(scenario())
 

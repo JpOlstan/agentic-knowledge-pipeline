@@ -393,8 +393,16 @@ def _run_manifest(
     ledger = usage_ledger(state)
     return RunManifest(
         run_id=state["run_id"],
-        versions={"application": "0.1.0", "contracts": "1", "graph": "1"},
-        models={},
+        versions={
+            "application": "0.1.0",
+            "contracts": "1",
+            "graph": "1",
+            **{
+                f"prompt.{record['prompt_name']}": str(record["prompt_version"])
+                for record in state["llm_records"]
+            },
+        },
+        models={str(record["agent"]): str(record["model"]) for record in state["llm_records"]},
         artifacts=tuple(artifacts),
         transitions=(),
         usage=UsageSummary(

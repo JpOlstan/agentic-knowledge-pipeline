@@ -547,7 +547,7 @@ Criar indice unidirecional, incremental e reconstruivel para evidencias, drafts 
 
 ## T-009 - Implementar OpenAI adapter, prompts e tres agentes
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I3  
 **Dependencias:** T-008  
 **Requisitos:** RF-004 a RF-007, RF-012, RNF-003, CA-001 a CA-004
@@ -591,6 +591,28 @@ Substituir o LLM fake por Structured Outputs reais mantendo uma chamada por agen
 - chamadas reais somente no marker `live`;
 - teste default continua sem custo;
 - usage ledger corresponde aos retornos do SDK.
+
+### Evidencia obtida em 2026-08-13
+
+- `OpenAIStructuredClient` implementa `responses.parse` com Pydantic, configuracao independente de
+  modelo, reasoning e max output para os tres agentes;
+- `AsyncOpenAI` e criado com timeout de 120 segundos e `max_retries=2`; a application layer nao
+  adiciona retry de transporte;
+- recusa falha imediatamente, output ausente ou schema incorreto permite exatamente um contract
+  repair e uma segunda falha termina com erro contratual sanitizado;
+- usage agrega input/output tokens e custo estimado de todas as respostas do contract repair;
+  response ID, model, prompt name/version e repair flag ficam no state compacto;
+- manifest registra model ID resolvido por agente e versoes dos quatro prompts;
+- prompts `agent_1`, `agent_2`, `agent_2_revision` e `agent_3` delimitam fonte, retrieval, drafts e
+  evidence como dados nao confiaveis e nao disponibilizam tools;
+- budget e verificado sobre instrucoes, schema/payload e delimitadores antes de cada chamada;
+- happy path preserva tres chamadas principais e o Agente 2 produz multiplas notas numa chamada;
+  revisao envia somente drafts bloqueados pelo prompt dedicado;
+- oito testes offline novos passaram, totalizando 98; um smoke test OpenAI foi criado sob marker
+  `live` e permaneceu desmarcado;
+- Ruff, lockfile, ambiente locked, build, manifesto e scans passaram; prompts e adapter foram
+  confirmados no wheel;
+- nenhuma chamada OpenAI, integracao live/eval, credencial real ou deploy foi executado.
 
 ## T-010 - Implementar WebArticleProvider seguro
 
@@ -955,11 +977,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.5 | 2026-08-04 | Codex | T-006 concluida no terceiro incremento com LangGraph, fakes, checkpoint SQLite, revision policy e resume offline. |
 | 1.6 | 2026-08-05 | Codex | T-007 concluida no quarto incremento com Vault Core deterministico, escrita atomica, inventario allowlisted e testes offline. |
 | 1.7 | 2026-08-13 | Codex | T-008 concluida na rodada seguinte com chunker v1, embeddings deduplicados, Qdrant local versionado, sync geracional, CLI e evidencias offline. |
+| 1.8 | 2026-08-13 | Codex | T-009 concluida no sexto incremento com Structured Outputs, prompts versionados, contract repair unico, usage e seguranca offline. |
 
 ## Proximo passo
 
-Submeter T-008 a revisao humana. T-009 permanece pendente e nao foi executada nesta rodada:
+Submeter T-009 a revisao humana. T-010 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-008 completed -> human review -> T-009 pending
+T-009 completed -> human review -> T-010 pending
 ```

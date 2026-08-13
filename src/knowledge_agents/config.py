@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     openai_model_agent_1: str = "gpt-5.6-terra"
     openai_model_agent_2: str = "gpt-5.6-terra"
     openai_model_agent_3: str = "gpt-5.6-terra"
+    openai_reasoning_agent_1: Literal["none", "minimal", "low", "medium", "high", "xhigh"] = "low"
+    openai_reasoning_agent_2: Literal["none", "minimal", "low", "medium", "high", "xhigh"] = (
+        "medium"
+    )
+    openai_reasoning_agent_3: Literal["none", "minimal", "low", "medium", "high", "xhigh"] = (
+        "medium"
+    )
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimensions: int = Field(default=1_536, gt=0)
     openai_api_key: SecretStr | None = None

@@ -21,7 +21,7 @@ from knowledge_agents.domain.contracts import (
     EvidenceBatch,
     SourceDescriptor,
 )
-from knowledge_agents.domain.enums import AcquisitionMethod, SourceType
+from knowledge_agents.domain.enums import AcquisitionMethod, AgentRole, SourceType
 from knowledge_agents.ports.artifacts import ArtifactStore
 from knowledge_agents.ports.llm import StructuredLLMPort, StructuredResult
 from knowledge_agents.ports.providers import KnowledgeSourceProvider
@@ -201,7 +201,12 @@ def test_fake_llm_returns_typed_result() -> None:
             duration_seconds=0,
         )
         llm = FakeStructuredLLM([StructuredResult(source, usage, "response-1")])
-        result = await llm.parse(prompt=({},), output_type=SourceDescriptor)
+        result = await llm.parse(
+            agent=AgentRole.ACQUISITION,
+            prompt_version="v1",
+            prompt=({"role": "user", "content": "fixture"},),
+            output_type=SourceDescriptor,
+        )
         assert result.output is source
         assert result.response_id == "response-1"
 
