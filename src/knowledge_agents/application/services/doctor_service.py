@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import sys
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
@@ -182,6 +184,75 @@ class SqliteCheck:
         )
 
 
+class NotebookLMRuntimeCheck:
+    name = "notebooklm_runtime"
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    async def run(self) -> CheckResult:
+        node = self.settings.notebooklm_node_executable
+        node_available = bool(shutil.which(node) or Path(node).is_file())
+        proxy = self.settings.notebooklm_proxy_path
+        package_json = self.settings.notebooklm_runtime_package_json
+        data_dir = self.settings.notebooklm_data_dir
+        proxy_available = proxy is not None and proxy.is_file()
+        package_available = package_json is not None and package_json.is_file()
+        data_available = data_dir is not None and data_dir.is_dir()
+        valid = node_available and proxy_available and package_available and data_available
+        return CheckResult(
+            name=self.name,
+            status=CheckStatus.PASS if valid else CheckStatus.FAIL,
+            exit_code=ExitCode.SUCCESS if valid else ExitCode.DEPENDENCY_UNAVAILABLE,
+            message="notebooklm_runtime_available" if valid else "notebooklm_runtime_unavailable",
+            metadata={
+                "node_available": node_available,
+                "proxy_available": proxy_available,
+                "package_available": package_available,
+                "data_available": data_available,
+            },
+        )
+
+
+class NotebookLMRegistryCheck:
+    name = "notebooklm_registry"
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    async def run(self) -> CheckResult:
+        package_json = self.settings.notebooklm_runtime_package_json
+        package_name = ""
+        package_version = ""
+        if package_json is not None:
+            try:
+                raw = json.loads(package_json.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                raw = None
+            if isinstance(raw, dict):
+                package_name = str(raw.get("name", ""))
+                package_version = str(raw.get("version", ""))
+        package_compatible = (
+            package_name == "@roomi-fields/notebooklm-mcp" and package_version == "2.1.0"
+        )
+        status = self.settings.notebooklm_registry_status
+        policy_compatible = status == "approved-read-only" or (
+            status == "evaluating" and self.settings.notebooklm_supervised
+        )
+        valid = package_compatible and policy_compatible
+        return CheckResult(
+            name=self.name,
+            status=CheckStatus.PASS if valid else CheckStatus.FAIL,
+            exit_code=ExitCode.SUCCESS if valid else ExitCode.PRECONDITION,
+            message="notebooklm_registry_compatible" if valid else "notebooklm_registry_blocked",
+            metadata={
+                "package_compatible": package_compatible,
+                "registry_status": status,
+                "supervised": self.settings.notebooklm_supervised,
+            },
+        )
+
+
 class DoctorService:
     def __init__(self) -> None:
         self.registry: dict[DoctorProfile, tuple[DoctorCheck, ...]] = {}
@@ -234,6 +305,15 @@ def local_doctor_service(settings: Settings, store: RunStore) -> DoctorService:
             DirectoryCheck("runtime_path", settings.runtime_path),
             VaultAllowlistCheck(settings),
             SqliteCheck(store),
+        ),
+    )
+    service.register(
+        DoctorProfile.NOTEBOOKLM,
+        (
+            PythonVersionCheck(),
+            ConfigurationCheck(settings),
+            NotebookLMRuntimeCheck(settings),
+            NotebookLMRegistryCheck(settings),
         ),
     )
     return service

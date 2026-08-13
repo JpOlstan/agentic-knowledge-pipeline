@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 from knowledge_agents.adapters.sqlite_run_store import SqliteRunStore
@@ -9,6 +10,8 @@ from knowledge_agents.application.services.doctor_service import (
     DoctorProfile,
     DoctorService,
     ExitCode,
+    NotebookLMRegistryCheck,
+    NotebookLMRuntimeCheck,
     PythonVersionCheck,
     SqliteCheck,
     local_doctor_service,
@@ -121,5 +124,70 @@ def test_registry_supports_future_profiles_without_network_checks(tmp_path: Path
         assert report.exit_code is ExitCode.SUCCESS
         assert unconfigured.exit_code is ExitCode.PRECONDITION
         assert unconfigured.checks[0].message == "profile_not_configured"
+
+    asyncio.run(scenario())
+
+
+def test_notebooklm_profile_validates_runtime_and_supervised_registry(
+    tmp_path: Path,
+) -> None:
+    proxy = tmp_path / "notebooklm-safe-proxy.mjs"
+    package_json = tmp_path / "package.json"
+    data_dir = tmp_path / "data"
+    proxy.write_text("// fixture", encoding="utf-8")
+    package_json.write_text(
+        '{"name":"@roomi-fields/notebooklm-mcp","version":"2.1.0"}',
+        encoding="utf-8",
+    )
+    data_dir.mkdir()
+
+    async def scenario() -> None:
+        settings = settings_for(
+            tmp_path,
+            notebooklm_node_executable=sys.executable,
+            notebooklm_proxy_path=proxy,
+            notebooklm_runtime_package_json=package_json,
+            notebooklm_data_dir=data_dir,
+            notebooklm_registry_status="evaluating",
+            notebooklm_supervised=True,
+        )
+        store = SqliteRunStore(settings.runtime_path / "state" / "runs.db")
+
+        report = await local_doctor_service(settings, store).run(DoctorProfile.NOTEBOOKLM)
+
+        assert report.exit_code is ExitCode.SUCCESS
+        assert {check.name for check in report.checks} == {
+            "python",
+            "configuration",
+            "notebooklm_runtime",
+            "notebooklm_registry",
+        }
+        assert str(proxy) not in json.dumps(report.to_dict())
+        assert str(data_dir) not in json.dumps(report.to_dict())
+
+    asyncio.run(scenario())
+
+
+def test_notebooklm_registry_blocks_unsupervised_evaluating_runtime(tmp_path: Path) -> None:
+    package_json = tmp_path / "package.json"
+    package_json.write_text(
+        '{"name":"@roomi-fields/notebooklm-mcp","version":"2.1.0"}',
+        encoding="utf-8",
+    )
+    settings = settings_for(
+        tmp_path,
+        notebooklm_runtime_package_json=package_json,
+        notebooklm_registry_status="evaluating",
+        notebooklm_supervised=False,
+    )
+
+    async def scenario() -> None:
+        result = await NotebookLMRegistryCheck(settings).run()
+        runtime = await NotebookLMRuntimeCheck(settings).run()
+
+        assert result.status is CheckStatus.FAIL
+        assert result.exit_code is ExitCode.PRECONDITION
+        assert result.message == "notebooklm_registry_blocked"
+        assert runtime.status is CheckStatus.FAIL
 
     asyncio.run(scenario())

@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi executado na branch `codex/increment-7-web-provider`: T-010 esta concluida com gates offline verdes; T-011 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy, URL real ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi executado na branch `codex/increment-8-notebooklm-provider`: T-011 esta concluida com gates offline verdes; T-012 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -121,6 +121,23 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do oitavo incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-8-notebooklm-provider` |
+| Commit base | `7dc7f5d` |
+| Tarefas autorizadas | `T-011` |
+| Tarefas executadas | `T-011` |
+| Tarefas fora do escopo | `T-012` a `T-017` |
+| MCP | cliente stdio e provider exercitados com fake/subprocesso Python local |
+| NotebookLM | proxy, browser, sessao e conta reais nao iniciados |
+| Registry | runtime 2.1.0 permitido em `evaluating` somente com supervisao |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente; smoke NotebookLM permaneceu `skip` |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -149,7 +166,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
 | I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
-| I4 | in-progress | T-010 concluida; T-011 permanece pendente |
+| I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
 | I5 | pending | nenhuma |
 | I6 | pending | nenhuma |
 | I7 | pending | nenhuma |
@@ -272,6 +289,28 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
   opaco e cleanup por TTL de 24 horas;
 - adicionada fixture HTML sanitizada e provado o provider real no mesmo LangGraph com LLMs fake;
 - nenhuma URL real, browser, JavaScript, cookie, credencial ou integracao live foi usada.
+
+### 2026-08-13 - Oitavo incremento: T-011
+
+- PR #7 confirmado como mergeado e `main` sincronizada por fast-forward para `7dc7f5d`;
+- criada a branch `codex/increment-8-notebooklm-provider` a partir da `main` mergeada;
+- implementado cliente JSON-RPC 2.0 stdio com lifecycle controlado, timeout, limite de mensagem,
+  serializacao de requests, stderr descartado e encerramento forcado com timeout;
+- ambiente filho reduzido a chaves operacionais e flags `HEADLESS=true`,
+  `AUTO_LOGIN_ENABLED=false`, remote read e ask; secrets da aplicacao nao sao herdados;
+- implementado `NotebookLMProvider` sobre o mesmo `KnowledgeSourceProvider`, com preflight de
+  handshake, `tools/list` e `server_health` antes de acessar a fonte;
+- allowlist do provider limitada as sete tools do DESIGN; as quatro leituras locais adicionais do
+  registry podem ser anunciadas, mas nao sao invocaveis pelo provider;
+- tool fora do registry read-only falha fechado antes do health; link compartilhado aceita somente
+  HTTPS, host NotebookLM, porta default e path de notebook;
+- runtime fixado semanticamente em `@roomi-fields/notebooklm-mcp` 2.1.0; status `evaluating`
+  requer supervisao e uso nao supervisionado exige `approved-read-only`;
+- doctor ganhou profile NotebookLM com checks offline sanitizados de Node, proxy, package, data dir
+  e policy do registry;
+- smoke live read-only foi criado sob marker `live`, mas permaneceu desmarcado;
+- somente codigo do proxy e metadata do package/registry foram lidos; data dir, cookies, conta,
+  browser, URL real e sessao nao foram acessados.
 
 ## Evidencias de T-001
 
@@ -700,6 +739,46 @@ automaticos ficam desabilitados.
 | CA-002 | fluxo blog direto provado integralmente offline | concluido para fixture |
 | CA-007 | URL/DNS maliciosos bloqueados antes do fetch ou do segundo hop | gate concluido |
 
+## Evidencias de T-011
+
+### Controles MCP e NotebookLM
+
+| Controle | Evidencia |
+|---|---|
+| Transporte | JSON-RPC 2.0 por stdio; nenhum listener HTTP ou shell |
+| Lifecycle | start idempotente, timeout, stdin fechado, terminate e kill limitado |
+| Ambiente | somente PATH/runtime basico e flags MCP; credenciais `KA_*` nao herdadas |
+| Preflight | initialize, initialized notification, `tools/list` e `server_health` obrigatorios |
+| Allowlist | sete tools do DESIGN invocaveis; extras read-only do registry apenas tolerados |
+| Fail-closed | tool nao registrada ou com token mutavel bloqueia o provider antes do health |
+| Runtime | package `@roomi-fields/notebooklm-mcp` versao 2.1.0 |
+| Registry | `evaluating` aceito somente supervisionado; recorrencia exige `approved-read-only` |
+| Fonte | `content_list` exige exatamente uma fonte por link compartilhado |
+| Contratos | URL convertida em ID/ref opacos; session ID e URL nao entram no EvidenceBatch |
+| Budget | resposta e citacoes medidas em UTF-8 contra `max_source_bytes` |
+| Doctor | checks locais nao iniciam proxy, browser, sessao ou rede |
+
+### Suites de T-011
+
+| Suite | Casos novos | Resultado |
+|---|---:|---|
+| `tests/unit/test_mcp_allowlist.py` | 18 | passou sem rede |
+| `tests/unit/test_doctor.py` | 2 | passou sem iniciar MCP |
+| `tests/live/test_notebooklm.py` | 1 | skipped sem flag opt-in |
+| **Total offline novo** | **20** | **passou sem rede** |
+| **Suite offline total** | **145** | **passou; 2 live deselected** |
+
+### Rastreabilidade parcial do oitavo incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-003 | NotebookLMProvider implementa o mesmo port e contratos do provider web | concluido offline |
+| RF-004 | EvidenceBatch versionado, fonte unica, hashes e locators opacos | base NotebookLM concluida |
+| RF-013 | profile doctor valida runtime e registry sem chamada paga | checks offline concluidos |
+| RF-014 | segunda rota esta pronta para eval opt-in posterior | provider concluido; eval em T-016 |
+| RNF-001 | allowlist fail-closed, ambiente minimo e sanitizacao de URL/session | gate concluido |
+| CA-001 | fluxo provider provado com fake MCP | offline concluido; live manual pendente |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -816,6 +895,26 @@ live/eval, credencial real, deploy ou tarefa T-010. O incremento esta apto para 
 Conclusao: T-010 atende ao DESIGN sem acessar URL real, rede de aplicacao, browser, OpenAI, vault
 real, live/eval, credencial, deploy ou tarefa T-011. O incremento esta apto para revisao humana.
 
+## Gate do oitavo incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-011 | 4 de 4 arquivos declarados presentes |
+| `uv lock --check --offline` | 80 pacotes resolvidos; lockfile sincronizado |
+| `ruff format --check .` | 65 arquivos ja formatados |
+| `ruff check .` | todos os checks passaram |
+| testes direcionados MCP/provider | 18 testes passaram |
+| testes direcionados com doctor | 25 testes passaram em 0.58s; 1 live deselected |
+| `pytest -m "not live and not eval" -q` | 145 testes passaram em 14.20s; 2 live deselected |
+| smoke `tests/live/test_notebooklm.py` | 1 skipped sem flag opt-in |
+| `uv build --offline` | sdist e wheel gerados; os dois adapters presentes no wheel |
+| scans de TODOs, credenciais e paths privados | zero matches |
+| dependencias | nenhuma dependencia ou alteracao de lockfile necessaria |
+
+Conclusao: T-011 atende ao DESIGN com fake MCP e subprocesso Python local, sem iniciar Node, proxy,
+browser, NotebookLM, sessao real, rede, live/eval, credencial, deploy ou tarefa T-012. O incremento
+esta apto para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -837,8 +936,13 @@ para carregar prompts do wheel sem introduzir SDK na application layer. Na T-010
 e `uv.lock` foram atualizados como suporte aos quatro arquivos declarados, promovendo HTTPX/HTTPCore
 a dependencias diretas e adicionando Trafilatura; nenhum wiring de CLI, provider T-011 ou integracao
 live foi antecipado.
+Na T-011, `.env.example`, `config.py`, `doctor_service.py` e seus testes foram atualizados como
+suporte necessario aos quatro arquivos declarados, adicionando somente configuracao nominal e
+checks offline do runtime/registry. O registry local permanece `evaluating`; por isso o provider
+falha fechado quando `supervised=false` e uso recorrente nao supervisionado continua bloqueado ate
+promocao humana para `approved-read-only`. Nenhuma dependencia foi adicionada e o lockfile nao mudou.
 
 ## Proximo passo
 
-Submeter T-010 a revisao humana. T-011 e a proxima tarefa do incremento I4, mas nao foi autorizada
+Submeter T-011 a revisao humana. T-012 e a proxima tarefa do incremento I5, mas nao foi autorizada
 nem iniciada nesta execucao.
