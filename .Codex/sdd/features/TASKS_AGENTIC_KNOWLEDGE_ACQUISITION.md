@@ -6,7 +6,7 @@ tools: [python, langgraph, openai, langfuse, qdrant, aws, terraform, mcp, sqlite
 status: validated
 maturity: advanced
 created: 2026-07-20
-updated: 2026-08-04
+updated: 2026-08-05
 review_cycle: on-demand
 tags: [workflow/tasks, topic/knowledge-acquisition, topic/multi-agent, risk/security]
 aliases: [Tasks Agentic Knowledge Acquisition]
@@ -430,7 +430,7 @@ Provar o pipeline de tres subgrafos, checkpoints, transicoes e correcoes sem int
 
 ## T-007 - Implementar Vault Core deterministico
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I2  
 **Dependencias:** T-006  
 **Requisitos:** RF-005, RF-006, RF-008, RNF-001, RNF-002
@@ -460,6 +460,25 @@ Renderizar e persistir drafts e manifests somente na area permitida, sem promoca
 - escrita atomica e idempotente;
 - diff de fixture demonstra paths e conteudo esperados;
 - nenhuma API de promocao, Git ou delete existe no aplicativo.
+
+### Evidencia obtida em 2026-08-05
+
+- `VaultScanner` le somente Markdown dentro de roots relativas allowlisted e retorna inventario
+  reduzido, sem corpo das notas;
+- `VaultWriter` grava exclusivamente em `01-inbox/agent-runs/<run_id>` e revalida containment e
+  symlinks antes do replace atomico;
+- `DraftRenderer` gera frontmatter e secoes deterministicos a partir de `DraftNote`, status e hash
+  revisado;
+- drafts `ready`, `partially_ready` e `enrichment_required` sao preservados; `rejected` e
+  `discard` sao omitidos de forma rastreavel;
+- colisao de note ID canonico, alteracao de conteudo no mesmo run, traversal, filename inseguro e
+  symlink sao bloqueados;
+- manifest JSON e review summary sanitizado sao persistidos sem issues, required changes ou corpos
+  de drafts;
+- 14 testes direcionados de integracao/seguranca e 75 testes offline totais passaram;
+- Ruff, lockfile, ambiente locked e build passaram; scans de TODOs e credenciais retornaram zero
+  matches;
+- nenhuma API de promocao, Git ou delete foi adicionada e nenhuma integracao live foi executada.
 
 ## T-008 - Implementar chunking, embeddings e Qdrant local
 
@@ -913,11 +932,12 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.3 | 2026-07-21 | Codex | T-003, T-004 e T-005 concluidas no segundo incremento com ports/fakes, persistencia local e doctor offline. |
 | 1.4 | 2026-08-04 | Codex | Clarificada a boundary de T-003 para permitir LangGraph e o checkpointer SQLite somente em `application/graph`, conforme arquitetura ja validada para T-006. |
 | 1.5 | 2026-08-04 | Codex | T-006 concluida no terceiro incremento com LangGraph, fakes, checkpoint SQLite, revision policy e resume offline. |
+| 1.6 | 2026-08-05 | Codex | T-007 concluida no quarto incremento com Vault Core deterministico, escrita atomica, inventario allowlisted e testes offline. |
 
 ## Proximo passo
 
-Submeter o terceiro incremento a revisao humana. T-007 permanece pendente e nao foi executada nesta rodada:
+Submeter T-007 a revisao humana. T-008 permanece pendente e nao foi executada nesta rodada:
 
 ```text
-T-006 completed -> human review -> T-007 pending
+T-007 completed -> human review -> T-008 pending
 ```
