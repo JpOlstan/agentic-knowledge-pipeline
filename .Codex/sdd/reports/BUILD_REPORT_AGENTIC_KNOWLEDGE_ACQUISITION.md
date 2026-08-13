@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi executado na branch `codex/increment-6-openai-agents`: T-009 esta concluida com gates offline verdes e o incremento I3 esta completo. T-010 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi executado na branch `codex/increment-7-web-provider`: T-010 esta concluida com gates offline verdes; T-011 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao live, eval, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -105,6 +105,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do setimo incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-7-web-provider` |
+| Commit base | `60a2bef` |
+| Tarefas autorizadas | `T-010` |
+| Tarefas executadas | `T-010` |
+| Tarefas fora do escopo | `T-011` a `T-017` |
+| Web | HTTPX/HTTPCore e Trafilatura exercitados somente com resolver/fetcher offline |
+| Fonte | fixture HTML publica sanitizada e sintetica |
+| Rede de aplicacao | nao usada |
+| Testes live/eval | excluidos explicitamente |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -133,7 +149,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I1 | completed | T-002 a T-006 concluidas; pipeline provado integralmente com fakes |
 | I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
-| I4 | pending | nenhuma |
+| I4 | in-progress | T-010 concluida; T-011 permanece pendente |
 | I5 | pending | nenhuma |
 | I6 | pending | nenhuma |
 | I7 | pending | nenhuma |
@@ -239,6 +255,23 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
   chamada principal por pacote no happy path;
 - criado smoke test minimo e sanitizado sob marker `live`, mas ele nao foi selecionado nem
   executado nesta rodada.
+
+### 2026-08-13 - Setimo incremento: T-010
+
+- PR #6 confirmado como mergeado e `main` sincronizada por fast-forward para `60a2bef`;
+- criada a branch `codex/increment-7-web-provider` a partir da `main` mergeada;
+- implementado `WebArticleProvider` sobre `KnowledgeSourceProvider`, com HTTP/HTTPS, portas
+  allowlisted, timeout, content types textuais e limite de 5 MiB;
+- implementada validacao de todos os enderecos A/AAAA e transporte HTTPX/HTTPCore pinado ao IP
+  publico aprovado, preservando Host e SNI sem segunda resolucao DNS;
+- cada um dos no maximo cinco redirects passa novamente por validacao completa de URL e DNS;
+- bloqueados IPv4/IPv6 private, loopback, link-local, multicast, reserved, unspecified, IPv4
+  mapeado, credenciais embutidas, fragments e portas fora da allowlist;
+- integrada Trafilatura 2.2 para texto e metadata deterministicos, executada fora do event loop;
+- HTML bruto de sucesso nao e persistido e falhas de extracao usam runtime local ignorado, nome
+  opaco e cleanup por TTL de 24 horas;
+- adicionada fixture HTML sanitizada e provado o provider real no mesmo LangGraph com LLMs fake;
+- nenhuma URL real, browser, JavaScript, cookie, credencial ou integracao live foi usada.
 
 ## Evidencias de T-001
 
@@ -622,6 +655,51 @@ instructions, tools ou output contract.
 | RNF-003 | budget preflight, retry owner unico e contract repair limitado | gate concluido |
 | CA-001 a CA-004 | mesmos tres agentes e contratos provados com fakes | fluxo offline concluido; providers live posteriores |
 
+## Evidencias de T-010
+
+### Controles de rede e extracao
+
+| Controle | Evidencia |
+|---|---|
+| Schemes | somente HTTP e HTTPS; contrato tambem rejeita outros schemes |
+| Autoridade | credenciais embutidas, fragments e hostname vazio bloqueados |
+| Portas | HTTP 80 e HTTPS 443 por default, com allowlists configuraveis separadas |
+| DNS | todos os A/AAAA devem ser globais e publicos |
+| Rebinding | transporte conecta diretamente ao IP validado e mantem hostname para Host/SNI |
+| Redirects | no maximo cinco; cada hop revalida URL, DNS e todos os IPs |
+| Timeout | 30 segundos por default no HTTPX |
+| Content type | somente `text/html` e `application/xhtml+xml` |
+| Body | Content-Length e stream decodificado limitados a 5 MiB |
+| Extracao | Trafilatura 2.2, precision mode, sem comments, images, links ou dedup global |
+| Raw HTML | sucesso nao persiste; falha usa runtime ignorado, nome opaco e TTL de 24 horas |
+| Erros | operation codes fixos; URL e body nao entram em mensagem ou `safe_dict` |
+
+O default transport usa uma connection pool HTTPCore com network backend proprio. O pool recebe o
+hostname original para verificacao TLS, mas `connect_tcp` aceita apenas o host/porta validados e
+abre o socket usando um dos IPs publicos aprovados. Proxies de ambiente, cookies, auth e redirects
+automaticos ficam desabilitados.
+
+### Suites de T-010
+
+| Suite | Casos novos | Resultado |
+|---|---:|---|
+| `tests/unit/test_web_provider.py` | 7 | passou |
+| `tests/security/test_ssrf.py` | 20 | passou |
+| **Total offline novo** | **27** | **passou sem rede** |
+| **Suite offline total** | **125** | **passou; 1 live deselected** |
+
+### Rastreabilidade parcial do setimo incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-003 | WebArticleProvider implementa o mesmo port usado pelo graph | web concluido; NotebookLM em T-011 |
+| RF-004 | EvidenceBatch com source, hashes, locators e texto extraido | base web concluida |
+| RF-014 | fixture sanitizada e deterministica preparada para comparacao | provider web concluido; eval em T-016 |
+| RNF-001 | SSRF IPv4/IPv6, redirects, rebinding, limits e erros seguros | gate concluido |
+| RNF-005 | provider concreto percorreu o graph com os mesmos contratos e LLMs fake | gate concluido |
+| CA-002 | fluxo blog direto provado integralmente offline | concluido para fixture |
+| CA-007 | URL/DNS maliciosos bloqueados antes do fetch ou do segundo hop | gate concluido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -721,6 +799,23 @@ rede de aplicacao, live/eval, deploy ou tarefa T-009. A rodada esta apta para re
 Conclusao: T-009 atende ao DESIGN com client fake e contratos reais, sem chamada OpenAI, teste
 live/eval, credencial real, deploy ou tarefa T-010. O incremento esta apto para revisao humana.
 
+## Gate do setimo incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-010 | 4 de 4 arquivos declarados presentes |
+| `uv lock --check` | 80 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked` | 80 pacotes auditados |
+| `uv run ruff format --check .` | 61 arquivos ja formatados |
+| `uv run ruff check .` | todos os checks passaram |
+| testes direcionados T-010 | 27 testes passaram em 2.45s |
+| `uv run pytest -m "not live and not eval" -q` | 125 testes passaram em 14.37s; 1 live deselected |
+| `uv build` | sdist e wheel gerados; WebArticleProvider presente no wheel |
+| scans de TODOs e credenciais | zero matches em source, tests e `.env.example` |
+
+Conclusao: T-010 atende ao DESIGN sem acessar URL real, rede de aplicacao, browser, OpenAI, vault
+real, live/eval, credencial, deploy ou tarefa T-011. O incremento esta apto para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -738,9 +833,12 @@ isso nenhuma migration nova foi necessaria. Na T-009, `.env.example`, config, LL
 manifest, agentes, fakes e testes de graph foram atualizados como suporte necessario aos arquivos
 declarados: configuracao por agente, prompt boundary, metadata compacta e verificacao do fluxo real.
 O helper `application/agents/prompts.py` e o package resource `prompts/__init__.py` foram adicionados
-para carregar prompts do wheel sem introduzir SDK na application layer.
+para carregar prompts do wheel sem introduzir SDK na application layer. Na T-010, `pyproject.toml`
+e `uv.lock` foram atualizados como suporte aos quatro arquivos declarados, promovendo HTTPX/HTTPCore
+a dependencias diretas e adicionando Trafilatura; nenhum wiring de CLI, provider T-011 ou integracao
+live foi antecipado.
 
 ## Proximo passo
 
-Submeter T-009 a revisao humana. T-010 e a proxima tarefa de dependencia, mas nao foi autorizada
+Submeter T-010 a revisao humana. T-011 e a proxima tarefa do incremento I4, mas nao foi autorizada
 nem iniciada nesta execucao.
