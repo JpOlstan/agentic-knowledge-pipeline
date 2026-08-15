@@ -1,0 +1,10 @@
+aws_region   = "us-east-1"
+project_name = "knowledge-agents"
+environment  = "dev"
+
+lambda_architecture             = "x86_64"
+oldest_message_age_alarm_seconds = 3600
+
+tags = {
+  Owner = "portfolio"
+}

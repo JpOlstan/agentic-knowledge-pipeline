@@ -6,7 +6,7 @@ tools: [python, langgraph, openai, langfuse, qdrant, aws, terraform, mcp, sqlite
 status: validated
 maturity: advanced
 created: 2026-07-20
-updated: 2026-08-13
+updated: 2026-08-15
 review_cycle: on-demand
 tags: [workflow/tasks, topic/knowledge-acquisition, topic/multi-agent, risk/security]
 aliases: [Tasks Agentic Knowledge Acquisition]
@@ -35,6 +35,8 @@ Documentos de origem:
 - Nao executar testes `live` ou `eval` sem comando explicito e credenciais preparadas.
 - Nao adicionar AWS, OpenAI, Langfuse, NotebookLM ou Qdrant a testes default.
 - Nao misturar alteracoes do vault com o repositorio publico da aplicacao.
+- Tratar implementacao offline concluida e validacao externa pendente como estados independentes.
+- Nao iniciar item `EXT-*` sem autorizacao explicita do usuario para aquele item.
 
 ## Definicao de pronto global
 
@@ -47,6 +49,62 @@ Uma tarefa esta concluida quando:
 5. requisitos e cenarios relacionados possuem evidencia no build report;
 6. nao restam TODOs necessarios para cumprir o criterio da tarefa;
 7. documentacao afetada esta sincronizada com o comportamento implementado.
+
+Uma tarefa pode ser marcada `completed` no escopo implementavel e verificavel offline sem encerrar
+seus itens `EXT-*`. A conclusao externa somente ocorre quando a evidencia especifica do item e
+registrada no build report. Isso permite continuar o build sem ocultar dependencias humanas, custos
+ou operacoes em plataformas externas.
+
+## Backlog canonico de integracoes adiadas
+
+Este backlog concentra toda atividade intencionalmente nao executada por depender de runtime local
+controlado, rede, conta, sessao, credencial, custo, deploy ou decisao humana. O status de uma tarefa
+`T-*` nao altera automaticamente o status de um item `EXT-*`.
+
+| ID | Origem | Atividade adiada | Dependencia humana ou externa | Fechamento planejado | Status |
+|---|---|---|---|---|---|
+| EXT-001 | T-008 | Validar Qdrant local com o adapter real, collections, indexes, sync e rebuild isolados | Docker disponivel; autorizacao para iniciar container e decidir retencao do volume; OpenAI somente se embeddings reais forem incluidos | preparacao em T-015/T-016; evidencia final antes da eval | pending |
+| EXT-002 | T-008, T-009 | Validar OpenAI Structured Outputs e embeddings com uso real contabilizado | chave criada pelo usuario, billing e teto de custo revisados, variaveis somente em ambiente local ignorado | smoke `tests/live/test_openai.py` e reconciliacao do usage ledger em T-016 | pending |
+| EXT-003 | T-010 | Executar aquisicao web contra a URL publica aprovada para o caso CrewAI | rede e URL real aprovadas; revisao do que pode aparecer em artifacts e relatorio | run WebArticleProvider sanitizada em T-016 | pending |
+| EXT-004 | T-011 | Validar NotebookLM MCP read-only com sessao real supervisionada | runtime pinado, data dir fora do repositorio, login interativo e URL de teste fornecida pelo usuario | smoke `tests/live/test_notebooklm.py`, allowlist e ausencia de vazamento em T-016 | pending |
+| EXT-005 | T-012, T-013 | Provisionar e validar AWS Lambda, Function URL, SQS, DLQ, IAM e CloudWatch | conta/regiao/principal definidos; credenciais temporarias; custo, IAM e `terraform plan` revisados antes de `apply` | deploy controlado, smoke `tests/live/test_aws_trigger.py`, consumo pelo worker, logs/alarmes e decisao de manter ou destruir recursos em T-016 | pending |
+| EXT-006 | T-014 | Validar Langfuse Cloud e reparo de falha de telemetria | projeto e chaves criados pelo usuario; politica de dados e custo revisada | trace sanitizada correlacionada por run ID e evidencia de repair em T-016 | pending |
+| EXT-007 | T-015 | Confirmar o workflow hospedado de CI no GitHub | push/PR autorizado; nenhuma credencial cloud; uso somente de fixtures e secret sintetico | checks hospedados verdes e markers live/eval ausentes da execucao default | pending |
+| EXT-008 | T-005, T-008, T-011, T-013, T-014 | Executar `doctor` nos profiles externos e registrar preflight consolidado | configuracoes locais dos servicos anteriores prontas; sem colar secrets em chat ou logs | profiles aplicaveis verdes ou excecoes aceitas antes de qualquer run ponta a ponta | pending |
+| EXT-009 | T-016 | Executar as duas rotas do caso CrewAI e produzir a baseline comparativa | EXT-001 a EXT-008 tratados, budget aprovado, commit/prompts/models/index fixados e autorizacao final | manifests privados locais e relatorio publico sanitizado revisado humanamente | pending |
+
+### Protocolo para fechar um item EXT
+
+1. Trabalhar em um item por vez, com autorizacao explicita do usuario pelo ID.
+2. Apresentar antes da execucao: conta ou ambiente alvo, side effects, estimativa ou limite de custo,
+   permissoes, dados enviados, procedimento de rollback/cleanup e evidencia esperada.
+3. Orientar o usuario a criar e armazenar credenciais localmente; nunca solicitar secret em chat,
+   commit, artifact, trace ou output persistido.
+4. Executar primeiro preflight, dry-run ou `plan` quando a plataforma oferecer essa etapa.
+5. Interromper antes de `apply`, deploy, chamada paga ou login quando uma nova aprovacao material for
+   necessaria.
+6. Sanitizar resultados, registrar somente evidencias nao sensiveis no build report e decidir
+   explicitamente se recursos e dados temporarios serao mantidos ou removidos.
+7. Marcar o item `completed` somente quando todos os criterios de fechamento estiverem comprovados;
+   `skipped`, `deselected`, configuracao parcial ou codigo implementado nao encerram o item.
+
+### Ordem do gate externo
+
+```text
+EXT-001 Qdrant local
+    -> EXT-002 OpenAI
+    -> EXT-003 Web real
+    -> EXT-004 NotebookLM
+    -> EXT-005 AWS
+    -> EXT-006 Langfuse
+    -> EXT-007 CI hospedado
+    -> EXT-008 doctor/preflight completo
+    -> EXT-009 eval ponta a ponta
+```
+
+A ordem pode ser ajustada por dependencia operacional, mas nenhum item e executado implicitamente.
+Enquanto o gate externo estiver adiado, o build pode continuar com codigo, fakes, testes offline,
+Terraform declarativo, scripts, templates e documentacao que nao dependam de evidencia real.
 
 ## Visao dos incrementos
 
@@ -777,7 +835,7 @@ Consumir SQS Standard localmente com long polling, heartbeat, leases e ack termi
 
 ## T-013 - Implementar Lambda trigger e Terraform
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I5  
 **Dependencias:** T-012  
 **Requisitos:** RF-001, RF-002, RF-012, RNF-001, RNF-006
@@ -827,6 +885,34 @@ terraform validate
 - unit tests da Lambda passam sem AWS;
 - live trigger assinado retorna run ID e mensagem chega a fila dev.
 
+### Evidencia obtida em 2026-08-13
+
+- handler limita o body decodificado a 16 KiB, aceita somente POST, rejeita JSON duplicado e
+  requests invalidos ou com multiplas fontes antes de acessar a fila;
+- `url` e obrigatoria; metadata opcional e campos futuros sao aceitos no boundary, mas nao seguem
+  para o envelope SQS minimo nem para logs;
+- IDs fornecidos sao preservados; idempotency key sem run ID gera run ID estavel; ausencias geram
+  run ID e SHA-256, com resposta `202` contendo apenas estado e run ID;
+- logs estruturados usam run ID, hostname, status e error code, sem URL completa, body ou causa
+  externa potencialmente sensivel;
+- Function URL usa `AWS_IAM`; policy do invocador inclui `lambda:InvokeFunctionUrl` condicionado ao
+  auth type e `lambda:InvokeFunction` condicionado a `lambda:InvokedViaFunctionUrl`;
+- role da Lambda permite somente `logs:CreateLogStream`, `logs:PutLogEvents` e `sqs:SendMessage` na
+  fila especifica; o Log Group e criado pelo Terraform com retencao de 14 dias;
+- SQS Standard usa long polling de 20 segundos, visibility de 180 segundos, retencao de quatro dias,
+  redrive apos cinco receives e DLQ restrita a fila de origem com retencao de 14 dias;
+- alarmes cobrem DLQ nao vazia e idade da mensagem mais antiga; URLs e policy com contexto de conta
+  sao outputs sensiveis;
+- pacote Lambda Linux x86_64 de 18.851.971 bytes foi gerado duas vezes com o mesmo SHA-256, usando
+  versoes pinadas pelo `uv.lock`, ordem/timestamp fixos e sem bytecode ou arquivo sensivel;
+- 16 testes unitarios passaram; suite offline completa totalizou 169 testes verdes e tres testes
+  live permaneceram desmarcados;
+- `terraform fmt`, `init -backend=false` e `validate` passaram com Terraform 1.11.4 e provider AWS
+  6.60.0, sem backend remoto ou credenciais;
+- smoke AWS assinado foi criado sob marker `live`, mas permaneceu `skip`; trigger real, fila dev,
+  `terraform plan/apply`, deploy e credenciais reais nao foram usados e permanecem rastreados em
+  EXT-005.
+
 ## T-014 - Implementar Langfuse, redacao e reparos secundarios
 
 **Status:** pending  
@@ -860,7 +946,7 @@ Registrar uma trace sanitizada por run e reparar Qdrant/Langfuse sem repetir age
 
 - teste prova que URL privada, path, key e body nao saem do adapter;
 - falha simulada cria repair e mantem call count dos agentes;
-- live trace pode ser correlacionada pelo run ID sanitizado.
+- live trace pode ser correlacionada pelo run ID sanitizado quando EXT-006 for autorizado.
 
 ## T-015 - Consolidar hardening, CI e gates offline
 
@@ -893,7 +979,7 @@ Transformar controles isolados em um gate reproduzivel para cada push e PR.
 
 ### Evidencia de conclusao
 
-- CI verde em branch sem credentials;
+- CI local verde e CI hospedado comprovado posteriormente por EXT-007, ambos sem credentials;
 - tentativa de adicionar secret de teste conhecido falha o gate;
 - security suite cobre SSRF, traversal, injection, redaction e tool allowlist.
 
@@ -908,6 +994,13 @@ Transformar controles isolados em um gate reproduzivel para cada push e PR.
 
 Executar o caso real pelas duas rotas e produzir baseline comparativa sanitizada sem threshold automatico.
 
+### Execucao em duas fases
+
+- **Preparacao offline:** implementar harness de eval, preflight, guardas de budget, templates de
+  relatorio e sanitizacao sem acessar servicos reais. Esta fase pode avancar sem fechar itens EXT.
+- **Execucao controlada:** fechar EXT-001 a EXT-008 e executar EXT-009 somente com o usuario
+  disponivel, autorizacao explicita e revisao de custo, dados e side effects.
+
 ### Arquivos
 
 - `tests/live/test_openai.py`
@@ -919,6 +1012,7 @@ Executar o caso real pelas duas rotas e produzir baseline comparativa sanitizada
 
 ### Implementacao
 
+- Preparar offline todos os arquivos, fixtures, comandos e validacoes que antecedem a run real.
 - Registrar preflight e autorizacao explicita da run.
 - Fixar commit, prompts, models, index snapshot e budgets.
 - Executar NotebookLMProvider e WebArticleProvider em runs separados.
@@ -928,6 +1022,7 @@ Executar o caso real pelas duas rotas e produzir baseline comparativa sanitizada
 
 ### Evidencia de conclusao
 
+- EXT-001 a EXT-009 possuem estado e evidencia atualizados no build report;
 - manifests privados preservados localmente;
 - relatorio publico sanitizado revisado;
 - gaps principais convertidos em iteracoes de DEFINE/DESIGN quando necessario.
@@ -953,6 +1048,7 @@ Tornar o repositorio compreensivel, reproduzivel e seguro para avaliacao externa
 
 ### Implementacao
 
+- Preparar antes da T-016 as secoes que nao dependem de resultados live, sem antecipar a release.
 - Explicar problema, arquitetura atual, demo, limites e roadmap cloud.
 - Incluir diagramas renderizados e verificados.
 - Documentar setup offline, Qdrant local e testes opt-in.
@@ -1038,11 +1134,15 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 1.9 | 2026-08-13 | Codex | T-010 concluida no setimo incremento com WebArticleProvider, DNS/IP pinning, SSRF, Trafilatura e graph offline. |
 | 2.0 | 2026-08-13 | Codex | T-011 concluida no oitavo incremento com MCP stdio controlado, allowlist read-only, registry supervisionado, doctor e testes offline. |
 | 2.1 | 2026-08-13 | Codex | T-012 concluida no nono incremento com adapter SQS, worker local, leases, heartbeat, ack terminal e testes offline. |
+| 2.2 | 2026-08-13 | Codex | T-013 concluida no decimo incremento com Lambda trigger, Terraform AWS, pacote reproduzivel e gates offline. |
+| 2.3 | 2026-08-15 | Codex com direcionamento humano | Criado backlog canonico EXT-001 a EXT-009 para separar implementacao offline de configuracao, custo, deploy e validacao externa; T-016 e T-017 passam a permitir preparacao offline antecipada sem executar integracoes. |
 
 ## Proximo passo
 
-Submeter T-012 a revisao humana. T-013 permanece pendente e nao foi executada nesta rodada:
+Submeter T-013 a revisao humana. Depois do merge, T-014 permanece a proxima implementacao offline;
+EXT-001 a EXT-009 ficam adiados ate autorizacao individual com o usuario disponivel:
 
 ```text
-T-012 completed -> human review -> T-013 pending
+T-013 completed offline -> human review -> T-014/T-015 e preparacao offline posterior
+                                     EXT-001..EXT-009 -> deferred, explicit opt-in
 ```
