@@ -13,7 +13,7 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi mergeado no PR #8, commit `fe74727`. O nono incremento foi executado na branch `codex/increment-9-sqs-worker`: T-012 esta concluida com gates offline verdes; T-013 e todas as tarefas posteriores permanecem pendentes. Nenhuma integracao AWS/live, eval, deploy, URL real ou credencial real foi usada.
+O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi mergeado no PR #8, commit `fe74727`. O nono incremento foi mergeado no PR #9, commit `950ac86`. O decimo incremento foi executado na branch `codex/increment-10-lambda-terraform`: T-013 esta concluida offline; T-014 e todas as tarefas posteriores permanecem pendentes. As validacoes adiadas foram consolidadas como EXT-001 a EXT-009. Nenhuma integracao AWS/live, eval, plan/apply, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -154,6 +154,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do decimo incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-10-lambda-terraform` |
+| Commit base | `950ac86` |
+| Tarefas autorizadas | `T-013` |
+| Tarefas executadas | `T-013` offline |
+| Tarefas fora do escopo | `T-014` a `T-017` |
+| Lambda | handler exercitado somente com fake SQS |
+| Terraform | fmt, init sem backend e validate; nenhum plan/apply |
+| AWS | provider baixado do registry; nenhuma API AWS chamada |
+| Testes live/eval | excluidos explicitamente; tres smokes permaneceram desmarcados |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -183,9 +199,33 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I2 | completed | T-007 e T-008 concluidas; vault e indice local validados offline |
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
-| I5 | in-progress | T-012 concluida offline; T-013 pendente |
+| I5 | completed offline | T-012 e T-013 concluidas; smoke AWS manual pendente |
 | I6 | pending | nenhuma |
 | I7 | pending | nenhuma |
+
+## Backlog de integracoes externas adiadas
+
+A definicao canonica, os pre-requisitos e o protocolo de autorizacao ficam em `TASKS`, na secao
+`Backlog canonico de integracoes adiadas`. Este relatorio registra o estado e recebera as evidencias
+sanitizadas quando cada item for executado.
+
+| ID | Escopo | Origem | Fechamento previsto | Estado atual |
+|---|---|---|---|---|
+| EXT-001 | Qdrant local real | T-008 | preparacao T-015/T-016, antes da eval | pending; container nao iniciado |
+| EXT-002 | OpenAI Structured Outputs e embeddings | T-008, T-009 | T-016 | pending; chave/API/custo nao usados |
+| EXT-003 | WebArticleProvider com URL publica real | T-010 | T-016 | pending; rede de aplicacao nao usada |
+| EXT-004 | NotebookLM MCP read-only com sessao real | T-011 | T-016 | pending; login/proxy/data dir reais nao usados |
+| EXT-005 | AWS plan/apply, deploy, IAM, trigger, worker e CloudWatch | T-012, T-013 | T-016 | pending; nenhuma API AWS chamada |
+| EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; implementacao T-014 ainda nao iniciada |
+| EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | pending; workflow ainda nao implementado |
+| EXT-008 | Doctor/preflight dos profiles externos | T-005, T-008, T-011, T-013, T-014 | antes da eval | pending; configuracoes externas ausentes |
+| EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; depende de EXT-001 a EXT-008 |
+
+Regras vigentes: nenhum item EXT e iniciado por inferencia; a autorizacao ocorre por ID e um item por
+vez. Credenciais serao criadas e armazenadas pelo usuario fora do Git, sem serem coladas em chat ou
+registradas em logs. Antes de side effect ou custo serao revisados alvo, permissoes, dados enviados,
+budget, rollback/cleanup e evidencia esperada. `skip`, `deselected` e preparacao parcial nao encerram
+um item.
 
 ## Registro de execucao
 
@@ -346,6 +386,41 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 - boto3 foi adicionado como dependencia direta e isolado no adapter; nenhum client AWS real foi
   criado durante os testes;
 - AWS/SQS real, live/eval, deploy, T-013 e credenciais reais nao foram usados.
+
+### 2026-08-13 - Decimo incremento: T-013
+
+- PR #9 confirmado como mergeado e branch criada a partir de `950ac86`;
+- implementado handler Function URL sem side effect de import, com client SQS injetavel, body de ate
+  16 KiB, POST, JSON unico e contrato externo validado antes do envio;
+- metadata opcional e campos futuros sao aceitos, mas descartados do envelope minimo; requests com
+  `urls` ou `sources` adicionais falham antes da fila;
+- IDs fornecidos sao preservados e ausencias geram run/idempotency ligados de forma deterministica;
+- resposta aceita usa `202`; falhas de contrato, tamanho, metodo, configuracao ou fila usam status e
+  codigos previsiveis sem ecoar URL, body, queue URL ou exception externa;
+- adicionados SQS Standard, DLQ, redrive allow policy, retencoes, long polling, visibility e SSE
+  gerenciada pelo SQS;
+- adicionados Lambda Python 3.12, Function URL `AWS_IAM`, role de execucao minima, Log Group de 14
+  dias e alarmes para DLQ e idade da mensagem;
+- policy template do invocador inclui as duas permissoes exigidas para Function URLs novas desde
+  outubro de 2025 e restringe `InvokeFunction` a `lambda:InvokedViaFunctionUrl`;
+- outputs com Function URL, queue URL e policy contextual foram marcados `sensitive`;
+- script PowerShell monta dependencias Linux pinadas pelo `uv.lock` e ZIP ordenado com timestamps
+  fixos; duas geracoes produziram o mesmo SHA-256;
+- smoke AWS SigV4 cria request isolado e remove somente sua mensagem correspondente, mas permaneceu
+  desmarcado sem flag opt-in;
+- nenhuma API AWS, credencial, fila, Function URL, plan/apply, backend remoto, deploy ou T-014 foi
+  usada ou executada.
+
+### 2026-08-15 - Consolidacao das validacoes adiadas
+
+- criado no `TASKS` o backlog canonico EXT-001 a EXT-009, cobrindo Qdrant, OpenAI, web real,
+  NotebookLM, AWS, Langfuse, CI hospedado, doctor externo e eval ponta a ponta;
+- cada item recebeu origem, dependencia humana/externa, etapa de fechamento e evidencia esperada;
+- T-016 foi separada operacionalmente entre preparacao offline e execucao controlada;
+- T-017 pode ter documentacao independente de live preparada antes da eval, mas baseline final e
+  release continuam bloqueadas;
+- nenhuma configuracao externa, credencial, rede de aplicacao, container, chamada paga, plan/apply,
+  deploy, teste live ou eval foi executado durante esta consolidacao.
 
 ## Evidencias de T-001
 
@@ -851,6 +926,56 @@ automaticos ficam desabilitados.
 | CA-005 | falha de heartbeat permite redelivery sem ack prematuro | concluido offline |
 | CA-008 | SQLite e idempotency key preservam o run em entrega repetida | concluido offline |
 
+## Evidencias de T-013
+
+### Controles Lambda e AWS declarativa
+
+| Controle | Evidencia |
+|---|---|
+| Boundary HTTP | somente POST; body UTF-8/base64 limitado a 16 KiB |
+| Contrato | URL obrigatoria; metadata opcional descartada; uma fonte por request |
+| Idempotencia | IDs preservados ou gerados; mesma key sem run ID produz run ID estavel |
+| Envelope | schema `1`, IDs, URL normalizada e timestamp UTC; JSON minimo |
+| Resposta | `202` com run ID; falhas usam 400, 405, 413 ou 503 sanitizados |
+| Logs | run ID, hostname, status e error code; sem URL completa ou body |
+| Function URL | `AWS_IAM` e modo buffered |
+| Invocador | `InvokeFunctionUrl` + `InvokeFunction` restrito a Function URL |
+| Execucao Lambda | somente dois eventos de log e `sqs:SendMessage` na fila especifica |
+| SQS | Standard, SSE, long poll 20 s, visibility 180 s e retencao 4 dias |
+| DLQ | retencao 14 dias, `maxReceiveCount=5` e allow policy `byQueue` |
+| Monitoramento | Log Group 14 dias; alarmes de DLQ e mensagem antiga |
+| Outputs | referencias com contexto de conta marcadas como sensiveis |
+| Estado | backend local; `.terraform` e state ignorados pelo Git |
+
+### Pacote Lambda
+
+| Verificacao | Resultado |
+|---|---|
+| Plataforma | Python 3.12, Linux x86_64/manylinux2014 |
+| Dependencias | 12 pacotes com versoes lidas do `uv.lock` |
+| Conteudo | 2.341 entradas; handler e cinco modulos internos presentes |
+| Tamanho | 18.851.971 bytes |
+| Reprodutibilidade | duas geracoes com SHA-256 `57a0553d0ec487ce0128b27fca55c5205b52818ab0a7f4a114d807288516ab0d` |
+| Scan | nenhum `.env`, `.aws`, bytecode, cache ou lock temporario no ZIP |
+
+### Suites de T-013
+
+| Suite | Casos | Resultado |
+|---|---:|---|
+| `tests/unit/test_lambda_handler.py` | 16 | passou com fake SQS e policy assertions |
+| `tests/live/test_aws_trigger.py` | 1 | skipped sem flag opt-in |
+| **Suite offline total** | **169** | **passou; 3 live deselected** |
+
+### Rastreabilidade parcial do decimo incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-001 | request URL, IDs idempotentes, envelope SQS e 202 | concluido offline |
+| RF-002 | Standard queue, redrive, DLQ e parametros alinhados ao worker | concluido declarativamente |
+| RF-012 | logs reduzidos, Log Group e dois alarmes SQS | concluido declarativamente |
+| RNF-001 | IAM minimo, AWS_IAM, outputs sensiveis e logs sem payload | gate concluido |
+| RNF-006 | provider lock, pacote deterministico e Terraform versionado | gate concluido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -1005,6 +1130,30 @@ Conclusao: T-012 atende ao DESIGN com client/queue fakes e SQLite temporario. En
 lease, heartbeat, redelivery, ack terminal e shutdown foram provados offline sem antecipar T-013.
 O incremento esta apto para revisao humana.
 
+## Gate do decimo incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-013 | 13 de 13 arquivos declarados presentes; provider lock como suporte |
+| `uv lock --check --offline` | 84 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked --offline` | 84 pacotes auditados |
+| `ruff format --check .` | 72 arquivos ja formatados |
+| `ruff check .` | todos os checks passaram |
+| testes direcionados T-013 | 16 testes passaram em 0.14s |
+| `pytest -m "not live and not eval" -q` | 169 testes passaram em 11.40s; 3 live deselected |
+| smoke `tests/live/test_aws_trigger.py` | 1 skipped sem flag opt-in |
+| pacote Lambda | 18.851.971 bytes; duas geracoes com SHA-256 identico |
+| `terraform fmt -check -recursive` | todos os arquivos formatados |
+| `terraform init -backend=false -lockfile=readonly` | provider AWS 6.60.0 reutilizado do lock |
+| `terraform validate` | configuracao valida com Terraform 1.11.4 |
+| `uv build --offline` | sdist e wheel gerados; handler Lambda presente no wheel |
+| scans de TODOs e credenciais | zero matches |
+
+Conclusao: T-013 atende ao DESIGN no escopo offline com handler fakeable, pacote reproduzivel e
+infraestrutura AWS declarativa validada. O smoke SigV4, plan/apply, deploy e recursos AWS reais
+permanecem pendentes em EXT-005, sujeitos a autorizacao e configuracao segura. O incremento esta apto
+para revisao humana.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -1035,8 +1184,17 @@ Na T-012, `pyproject.toml` e `uv.lock` foram atualizados para declarar boto3 com
 `entrypoints/__init__.py` foi criado para empacotar o novo modulo. O SDK permanece confinado ao adapter,
 e sua interface foi exercitada apenas por fake. CLI composition root, Lambda, Terraform, SQS real e
 teste live AWS permanecem para T-013 ou wiring posterior conforme o DESIGN.
+Na T-013, `.terraform.lock.hcl` foi adicionado como suporte de reprodutibilidade recomendado pelo
+proprio Terraform. O script empacota somente o subset Python necessario ao trigger e suas dependencias
+Linux pinadas; o ZIP gerado permanece ignorado em `dist/`. Metadata externa e aceita para compatibilidade,
+mas nao e propagada ao envelope SQS porque o schema validado da T-012 permite apenas os cinco campos do
+DESIGN. O comando CLI SigV4 continua fora desta tarefa conforme o manifesto; o smoke live demonstra o
+request assinado quando for explicitamente autorizado. Nenhum `terraform plan` foi gerado porque isso
+exigiria contexto de conta/provider; somente init sem backend e validate foram executados.
 
 ## Proximo passo
 
-Submeter T-012 a revisao humana. T-013 e a proxima tarefa do incremento I5, mas nao foi autorizada
-nem iniciada nesta execucao.
+Submeter T-013 a revisao humana. T-014 e a proxima tarefa de implementacao offline, mas nao foi
+autorizada nem iniciada nesta execucao. EXT-001 a EXT-009 permanecem adiados e somente poderao ser
+executados individualmente, com autorizacao explicita e o usuario disponivel para revisar seguranca,
+custos, dados e side effects.
