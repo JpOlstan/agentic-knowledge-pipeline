@@ -280,6 +280,25 @@ class FakeRunStore(FakeBase, RunStore):
         self._record("list_repairs")
         return tuple(self.repairs[key] for key in sorted(self.repairs))
 
+    async def complete_repair(self, repair_id: str) -> None:
+        self._record("complete_repair", repair_id=repair_id)
+        self.repairs.pop(repair_id, None)
+
+    async def fail_repair(
+        self,
+        *,
+        repair_id: str,
+        attempts: int,
+        last_error: str,
+    ) -> None:
+        self._record(
+            "fail_repair",
+            repair_id=repair_id,
+            attempts=attempts,
+            last_error=last_error,
+        )
+        self.repairs.pop(repair_id, None)
+
     async def replay_run(
         self,
         *,

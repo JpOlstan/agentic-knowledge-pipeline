@@ -915,7 +915,7 @@ terraform validate
 
 ## T-014 - Implementar Langfuse, redacao e reparos secundarios
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I6  
 **Dependencias:** T-009, T-012  
 **Requisitos:** RF-011, RF-012, RNF-001, RNF-003, CA-006
@@ -947,6 +947,25 @@ Registrar uma trace sanitizada por run e reparar Qdrant/Langfuse sem repetir age
 - teste prova que URL privada, path, key e body nao saem do adapter;
 - falha simulada cria repair e mantem call count dos agentes;
 - live trace pode ser correlacionada pelo run ID sanitizado quando EXT-006 for autorizado.
+
+### Evidencia obtida em 2026-08-15
+
+- trace ID de 32 caracteres hexadecimais e derivado deterministicamente do run ID; o adapter cria
+  observations dos tipos `span`, `generation` e `retriever` conforme a API Langfuse 4.14.4;
+- `RedactionPolicy` normaliza nomes, descarta metadata fora da allowlist e mascara secret, URL e
+  path antes da primeira chamada ao client Langfuse;
+- o grafo registra generations compactas, retrieval count e terminal span sem body, prompt, URL
+  completa ou path absoluto;
+- falhas simuladas de indice e flush persistem repairs deterministicas para Qdrant e Langfuse,
+  preservam `completed_with_warnings` e mantem exatamente tres chamadas aos agentes;
+- `RepairService` executa somente os targets secundarios, usa backoff exponencial com jitter
+  deterministico, limita a tres tentativas e persiste estados `completed`/`failed` no SQLite;
+- `knowledge-agents repairs list` funciona offline; `repairs run <run_id>` retorna zero sem repairs
+  e falha fechado sem as credenciais exigidas pelo target;
+- 17 testes focados e 178 testes offline passaram; tres testes live foram explicitamente
+  desmarcados; Ruff, build e lockfile passaram;
+- nenhuma trace live, API Langfuse/OpenAI/Qdrant, credencial real ou deploy foi usado. A correlacao
+  Cloud e o repair real continuam pendentes exclusivamente em EXT-006.
 
 ## T-015 - Consolidar hardening, CI e gates offline
 
@@ -1136,13 +1155,14 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 2.1 | 2026-08-13 | Codex | T-012 concluida no nono incremento com adapter SQS, worker local, leases, heartbeat, ack terminal e testes offline. |
 | 2.2 | 2026-08-13 | Codex | T-013 concluida no decimo incremento com Lambda trigger, Terraform AWS, pacote reproduzivel e gates offline. |
 | 2.3 | 2026-08-15 | Codex com direcionamento humano | Criado backlog canonico EXT-001 a EXT-009 para separar implementacao offline de configuracao, custo, deploy e validacao externa; T-016 e T-017 passam a permitir preparacao offline antecipada sem executar integracoes. |
+| 2.4 | 2026-08-15 | Codex | T-014 concluida offline com Langfuse sanitizado, trace ID deterministico, repairs Qdrant/Langfuse, CLI e evidencias; EXT-006 permanece pendente. |
 
 ## Proximo passo
 
-Submeter T-013 a revisao humana. Depois do merge, T-014 permanece a proxima implementacao offline;
+Submeter T-014 a revisao humana. Depois do merge, T-015 e a proxima implementacao offline;
 EXT-001 a EXT-009 ficam adiados ate autorizacao individual com o usuario disponivel:
 
 ```text
-T-013 completed offline -> human review -> T-014/T-015 e preparacao offline posterior
+T-014 completed offline -> human review -> T-015 e preparacao offline posterior
                                      EXT-001..EXT-009 -> deferred, explicit opt-in
 ```

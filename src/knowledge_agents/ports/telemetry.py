@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
+
+ObservationType = Literal["span", "generation", "retriever"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -9,6 +11,7 @@ class TelemetryEvent:
     name: str
     occurred_at: datetime
     attributes: dict[str, str | int | float | bool]
+    observation_type: ObservationType = "span"
 
 
 @runtime_checkable

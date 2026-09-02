@@ -4,7 +4,7 @@ area: ai-for-data-engineering
 domain: agentic-knowledge-acquisition
 status: in-progress
 created: 2026-07-21
-updated: 2026-08-13
+updated: 2026-08-15
 tags: [workflow/build, topic/knowledge-acquisition, evidence/traceability]
 related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISITION]
 ---
@@ -13,7 +13,11 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo incremento foi mergeado no PR #2, commit `817cd08`. O terceiro incremento foi mergeado no PR #3, commit `d75d118`. O quarto incremento foi mergeado no PR #4, commit `43b7dba`. A quinta rodada foi mergeada no PR #5, commit `9cdf33b`. O sexto incremento foi mergeado no PR #6, commit `60a2bef`. O setimo incremento foi mergeado no PR #7, commit `7dc7f5d`. O oitavo incremento foi mergeado no PR #8, commit `fe74727`. O nono incremento foi mergeado no PR #9, commit `950ac86`. O decimo incremento foi executado na branch `codex/increment-10-lambda-terraform`: T-013 esta concluida offline; T-014 e todas as tarefas posteriores permanecem pendentes. As validacoes adiadas foram consolidadas como EXT-001 a EXT-009. Nenhuma integracao AWS/live, eval, plan/apply, deploy, URL real ou credencial real foi usada.
+Os dez primeiros incrementos foram mergeados; o PR #10 produziu o merge commit `61baeb2`. O
+decimo primeiro incremento esta na branch `codex/increment-11-langfuse-repairs`: T-014 foi
+concluida offline e T-015 a T-017 permanecem pendentes. EXT-001 a EXT-009 continuam como backlog
+separado. O indice de pacotes foi usado apenas para resolver/baixar o SDK fixado; nenhuma API de
+aplicacao, trace live, eval, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -170,6 +174,22 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do decimo primeiro incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-11-langfuse-repairs` |
+| Commit base | `61baeb2` |
+| Tarefas autorizadas | `T-014` |
+| Tarefas executadas | `T-014` offline |
+| Tarefas fora do escopo | `T-015` a `T-017`; `EXT-001` a `EXT-009` |
+| Langfuse | SDK exercitado somente por fake; API/Cloud nao chamados |
+| Qdrant/OpenAI | handlers implementados; clients/APIs nao executados |
+| Rede | somente indice de pacotes para lock/sync do SDK Langfuse |
+| Testes live/eval | excluidos explicitamente; tres smokes permaneceram desmarcados |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -200,7 +220,7 @@ O primeiro incremento foi mergeado no PR #1, commit `4bead6b`. O segundo increme
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
 | I5 | completed offline | T-012 e T-013 concluidas; smoke AWS manual pendente |
-| I6 | pending | nenhuma |
+| I6 | in progress offline | T-014 concluida; T-015 pendente; Langfuse live em EXT-006 |
 | I7 | pending | nenhuma |
 
 ## Backlog de integracoes externas adiadas
@@ -216,7 +236,7 @@ sanitizadas quando cada item for executado.
 | EXT-003 | WebArticleProvider com URL publica real | T-010 | T-016 | pending; rede de aplicacao nao usada |
 | EXT-004 | NotebookLM MCP read-only com sessao real | T-011 | T-016 | pending; login/proxy/data dir reais nao usados |
 | EXT-005 | AWS plan/apply, deploy, IAM, trigger, worker e CloudWatch | T-012, T-013 | T-016 | pending; nenhuma API AWS chamada |
-| EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; implementacao T-014 ainda nao iniciada |
+| EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; adapter e repairs offline concluidos, sem trace Cloud |
 | EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | pending; workflow ainda nao implementado |
 | EXT-008 | Doctor/preflight dos profiles externos | T-005, T-008, T-011, T-013, T-014 | antes da eval | pending; configuracoes externas ausentes |
 | EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; depende de EXT-001 a EXT-008 |
@@ -421,6 +441,23 @@ um item.
   release continuam bloqueadas;
 - nenhuma configuracao externa, credencial, rede de aplicacao, container, chamada paga, plan/apply,
   deploy, teste live ou eval foi executado durante esta consolidacao.
+
+### 2026-08-15 - Decimo primeiro incremento: T-014
+
+- PR #10 confirmado como mergeado; branch criada de `61baeb2` para executar somente T-014;
+- adicionado adapter Langfuse com trace ID deterministico de 32 hexadecimais e observations
+  `span`, `generation` e `retriever`;
+- redacao client-side aplica allowlist e mascara secrets, URLs e paths antes do client SDK;
+- grafo emite metadata compacta de agentes, usage, retrieval e resultado terminal; falhas de
+  Qdrant/Langfuse criam repairs deterministicas e preservam `completed_with_warnings`;
+- `RepairService` processa apenas side effects secundarios, com tres tentativas, backoff exponencial,
+  jitter deterministico e erros persistidos somente por codigo seguro;
+- SQLite passou a persistir conclusao e exaustao de repairs; CLI passou a listar e executar por
+  run ID, falhando fechado quando o target exige configuracao ausente;
+- SDK Langfuse 4.14.4 foi fixado no lockfile e sua assinatura foi inspecionada localmente; uma
+  incompatibilidade inicial de `start_time` foi corrigida antes do gate;
+- somente o registro de pacotes foi acessado para resolver e instalar dependencias; Langfuse Cloud,
+  Qdrant, OpenAI, live/eval, credenciais e deploy nao foram usados.
 
 ## Evidencias de T-001
 
@@ -976,6 +1013,43 @@ automaticos ficam desabilitados.
 | RNF-001 | IAM minimo, AWS_IAM, outputs sensiveis e logs sem payload | gate concluido |
 | RNF-006 | provider lock, pacote deterministico e Terraform versionado | gate concluido |
 
+## Evidencias de T-014
+
+### Redacao, observations e repairs
+
+| Controle | Evidencia offline |
+|---|---|
+| Correlacao | mesmo run ID produz sempre o mesmo trace ID de 32 hexadecimais |
+| Tipos | fake do SDK recebeu `span`, `generation` e `retriever` |
+| Allowlist | campos desconhecidos como body, URL, path e authorization foram descartados |
+| Masking | valores sensiveis em campos permitidos foram substituidos antes do client |
+| Falha secundaria | indice e flush falhos criaram repairs Qdrant/Langfuse deterministicas |
+| Resultado primario | run terminou `completed_with_warnings` com artifacts preservados |
+| Agentes | call count permaneceu em tres; RepairService nao possui dependencia LLM |
+| Retry | backoff exponencial com jitter deterministico e limite de tres tentativas |
+| Durabilidade | SQLite registrou estados `completed` e `failed` sem exception bruta |
+| CLI | listagem e run vazio passam offline; credencial ausente bloqueia antes do client |
+
+### Suites de T-014
+
+| Suite | Resultado |
+|---|---|
+| `tests/security/test_redaction.py` | 3 passaram com client Langfuse fake |
+| `tests/integration/test_secondary_repair.py` | 4 passaram com graph/fakes/SQLite |
+| CLI e regressao de graph no gate focado | 10 passaram |
+| **Gate focado** | **17 passaram em 5.76s** |
+| **Suite offline total** | **178 passaram em 15.49s; 3 live deselected** |
+
+### Rastreabilidade parcial do decimo primeiro incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-011 / CA-006 | falhas secundarias geram repairs sem repetir agentes | concluido offline |
+| RF-012 | usage e resultado reduzidos em observations sanitizadas | concluido offline |
+| RNF-001 | redacao client-side, allowlist e CLI fail-closed | gate concluido |
+| RNF-003 | repairs com limite, backoff e estados terminais duraveis | gate concluido |
+| EXT-006 | trace Cloud e repair contra projeto real | pending; opt-in humano exigido |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -1154,6 +1228,25 @@ infraestrutura AWS declarativa validada. O smoke SigV4, plan/apply, deploy e rec
 permanecem pendentes em EXT-005, sujeitos a autorizacao e configuracao segura. O incremento esta apto
 para revisao humana.
 
+## Gate do decimo primeiro incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-014 | 5 de 5 arquivos declarados presentes; ports, graph, CLI e lock como suporte |
+| `uv lock --check --offline` | 94 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --all-groups` | SDK Langfuse 4.14.4 e dependencias fixadas instalados localmente |
+| `ruff format --check src tests` | 78 arquivos ja formatados |
+| `ruff check src tests` | todos os checks passaram |
+| testes direcionados T-014 e regressoes | 17 testes passaram em 5.76s |
+| `pytest -m "not live and not eval" -q` | 178 testes passaram em 15.49s; 3 live deselected |
+| `uv build --offline` | sdist e wheel gerados com sucesso |
+| scans de TODOs e credenciais | zero TODOs; somente secrets sinteticos de testes negativos |
+| integracoes externas | nenhuma API, trace Cloud, credencial, live/eval ou deploy executado |
+
+Conclusao: T-014 atende ao DESIGN no escopo offline. Redacao ocorre antes do SDK; falhas secundarias
+criam repairs duraveis e nao repetem agentes. A validacao real no Langfuse Cloud permanece separada
+em EXT-006. O incremento esta apto para revisao humana, commit e draft PR.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -1191,10 +1284,15 @@ mas nao e propagada ao envelope SQS porque o schema validado da T-012 permite ap
 DESIGN. O comando CLI SigV4 continua fora desta tarefa conforme o manifesto; o smoke live demonstra o
 request assinado quando for explicitamente autorizado. Nenhum `terraform plan` foi gerado porque isso
 exigiria contexto de conta/provider; somente init sem backend e validate foram executados.
+Na T-014, `ports/telemetry.py`, `ports/run_store.py`, SQLiteRunStore, graph nodes, CLI, fakes,
+`pyproject.toml`, `uv.lock` e testes de CLI foram alterados como suporte necessario aos cinco arquivos
+declarados. A API do SDK Langfuse foi validada pela assinatura instalada, mas a entrega Cloud e o
+comportamento de falha de rede do exporter nao foram presumidos como evidencia: ambos permanecem em
+EXT-006. O acesso ao indice de pacotes serviu somente para dependency resolution e sync local.
 
 ## Proximo passo
 
-Submeter T-013 a revisao humana. T-014 e a proxima tarefa de implementacao offline, mas nao foi
-autorizada nem iniciada nesta execucao. EXT-001 a EXT-009 permanecem adiados e somente poderao ser
+Submeter T-014 a revisao humana. Depois do merge, T-015 e a proxima tarefa offline. EXT-001 a
+EXT-009 permanecem adiados e somente poderao ser
 executados individualmente, com autorizacao explicita e o usuario disponivel para revisar seguranca,
 custos, dados e side effects.
