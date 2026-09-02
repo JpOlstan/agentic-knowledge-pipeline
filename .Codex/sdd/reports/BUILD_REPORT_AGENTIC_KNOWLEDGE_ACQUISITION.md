@@ -4,7 +4,7 @@ area: ai-for-data-engineering
 domain: agentic-knowledge-acquisition
 status: in-progress
 created: 2026-07-21
-updated: 2026-08-15
+updated: 2026-09-02
 tags: [workflow/build, topic/knowledge-acquisition, evidence/traceability]
 related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISITION]
 ---
@@ -13,11 +13,11 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-Os dez primeiros incrementos foram mergeados; o PR #10 produziu o merge commit `61baeb2`. O
-decimo primeiro incremento esta na branch `codex/increment-11-langfuse-repairs`: T-014 foi
-concluida offline e T-015 a T-017 permanecem pendentes. EXT-001 a EXT-009 continuam como backlog
-separado. O indice de pacotes foi usado apenas para resolver/baixar o SDK fixado; nenhuma API de
-aplicacao, trace live, eval, deploy, URL real ou credencial real foi usada.
+Os onze primeiros incrementos foram mergeados; o PR #11 produziu o merge commit `0caf5c5`. O
+decimo segundo incremento esta na branch `codex/increment-12-hardening-ci`: T-015 foi concluida
+e T-016/T-017 permanecem pendentes. EXT-007 foi concluido pelos checks do draft PR #12; os demais
+itens EXT continuam como backlog separado. Nenhuma API de aplicacao, trace live, eval, plan/apply,
+deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -190,6 +190,22 @@ aplicacao, trace live, eval, deploy, URL real ou credencial real foi usada.
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do decimo segundo incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-12-hardening-ci` |
+| Commit base | `0caf5c5` |
+| Tarefas autorizadas | `T-015` |
+| Tarefas executadas | `T-015` offline |
+| Tarefas fora do escopo | `T-016`, `T-017`; `EXT-001` a `EXT-009` |
+| CI | workflow read-only validado localmente e nos jobs Python/Terraform do draft PR #12 |
+| Terraform | fmt, init sem backend e validate; nenhum plan/apply |
+| Rede | registries de pacotes/providers no gate e GitHub Actions do PR; nenhuma API de aplicacao |
+| Testes live/eval | excluidos por default; tres testes permaneceram desmarcados |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -220,7 +236,7 @@ aplicacao, trace live, eval, deploy, URL real ou credencial real foi usada.
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
 | I5 | completed offline | T-012 e T-013 concluidas; smoke AWS manual pendente |
-| I6 | in progress offline | T-014 concluida; T-015 pendente; Langfuse live em EXT-006 |
+| I6 | completed | T-014/T-015 e EXT-007 concluidos; Langfuse live permanece em EXT-006 |
 | I7 | pending | nenhuma |
 
 ## Backlog de integracoes externas adiadas
@@ -237,7 +253,7 @@ sanitizadas quando cada item for executado.
 | EXT-004 | NotebookLM MCP read-only com sessao real | T-011 | T-016 | pending; login/proxy/data dir reais nao usados |
 | EXT-005 | AWS plan/apply, deploy, IAM, trigger, worker e CloudWatch | T-012, T-013 | T-016 | pending; nenhuma API AWS chamada |
 | EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; adapter e repairs offline concluidos, sem trace Cloud |
-| EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | pending; workflow ainda nao implementado |
+| EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | completed em 2026-09-02; PR #12 com jobs Python e Terraform verdes, sem credentials |
 | EXT-008 | Doctor/preflight dos profiles externos | T-005, T-008, T-011, T-013, T-014 | antes da eval | pending; configuracoes externas ausentes |
 | EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; depende de EXT-001 a EXT-008 |
 
@@ -458,6 +474,23 @@ um item.
   incompatibilidade inicial de `start_time` foi corrigida antes do gate;
 - somente o registro de pacotes foi acessado para resolver e instalar dependencias; Langfuse Cloud,
   Qdrant, OpenAI, live/eval, credenciais e deploy nao foram usados.
+
+### 2026-09-02 - Decimo segundo incremento: T-015
+
+- PR #11 confirmado como mergeado; branch criada de `0caf5c5` para executar somente T-015;
+- criado workflow read-only com actions pinadas por SHA, sync locked, Ruff, testes offline,
+  Terraform fmt/validate e secret scan, sem secrets, OIDC, plan/apply ou deploy;
+- markers `live` e `eval` passaram a ser excluidos por default pelo pytest;
+- scanner local inspeciona tracked/untracked nao ignorados, evita ecoar matches e rejeitou uma
+  credencial AWS sintetica conhecida com exit code 1;
+- seis testes de composicao cobrem todas as trust boundaries do DESIGN, complementando SSRF,
+  traversal, prompt injection, redaction e tool allowlist;
+- security model documenta threats, mitigacoes, riscos aceitos, classificacao de dados e resposta
+  segura a incidentes de secrets;
+- a primeira rodada hospedada encontrou um checksum `h1` apenas para Windows no provider AWS; o
+  lockfile foi regenerado para `windows_amd64` e `linux_amd64`, sem alterar a versao 6.60.0;
+- no commit corretivo `ac9e620`, as execucoes de push e pull request passaram nos jobs Python e
+  Terraform; nenhuma API de aplicacao, credencial real, live/eval, plan/apply ou deploy foi usado.
 
 ## Evidencias de T-001
 
@@ -1050,6 +1083,45 @@ automaticos ficam desabilitados.
 | RNF-003 | repairs com limite, backoff e estados terminais duraveis | gate concluido |
 | EXT-006 | trace Cloud e repair contra projeto real | pending; opt-in humano exigido |
 
+## Evidencias de T-015
+
+### Hardening, CI e trust boundaries
+
+| Controle | Evidencia offline |
+|---|---|
+| CI minimo | permissoes `contents: read`, sem secrets/OIDC e actions pinadas por SHA |
+| Exclusao default | configuracao pytest aplica `not live and not eval` sem depender do operador |
+| Secret scan | repositorio verde; segredo sintetico falhou sem eco do valor |
+| SSRF | redirect com credentials embutidas foi bloqueado antes do segundo request |
+| Path traversal | leitura fora da allowlist do vault falhou sem expor o conteudo |
+| Prompt injection | conteudo nao confiavel permaneceu delimitado e output nao ampliou tools |
+| Redacao | estruturas profundas e metadata nao finita foram descartadas antes da telemetria |
+| Composicao | seis trust boundaries possuem testes explicitos de fail-closed/redacao |
+| Resposta a incidente | documento define contencao, rotacao, auditoria e remediacao sanitizada |
+| CI hospedado | draft PR #12 passou nos jobs Python e Terraform, sem credentials |
+
+### Suites de T-015
+
+| Suite | Resultado |
+|---|---|
+| testes focados de seguranca, boundaries e CI policy | 98 passaram em 4.11s |
+| secret scan do repositorio | 113 arquivos verificados; zero achados |
+| caso negativo de secret sintetico | exit code 1; valor nao apareceu no output |
+| **Suite offline total** | **193 passaram em 14.03s; 3 live/eval deselected** |
+| **GitHub Actions** | **push e pull request verdes nos dois jobs apos lock multiplataforma** |
+
+### Rastreabilidade parcial do decimo segundo incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RNF-001 | scanner, security suite, CI sem credentials e modelo de ameacas | gate concluido |
+| RNF-002/RNF-003 | gates de regressao preservam determinismo e budgets existentes | gate concluido |
+| RNF-004 | suite default offline e workflow reproduzivel por push/PR | concluido localmente |
+| RNF-005 | trust boundaries compostas e outputs incapazes de ampliar capabilities | gate concluido |
+| RNF-006 | lock, build e Terraform fmt/init/validate reproduziveis | gate concluido |
+| CA-007/CA-009 | SSRF/traversal/injection/redaction e gates pre-live | concluido offline |
+| EXT-007 | execucao do workflow no GitHub | completed; PR #12 verde sem credentials |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -1247,6 +1319,29 @@ Conclusao: T-014 atende ao DESIGN no escopo offline. Redacao ocorre antes do SDK
 criam repairs duraveis e nao repetem agentes. A validacao real no Langfuse Cloud permanece separada
 em EXT-006. O incremento esta apto para revisao humana, commit e draft PR.
 
+## Gate do decimo segundo incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-015 | 6 de 6 arquivos declarados presentes; workflow, scanner e testes de composicao/policy como suporte |
+| `uv lock --check --offline` | 94 pacotes resolvidos; lockfile sincronizado |
+| `uv sync --locked --all-groups` | 94 pacotes auditados; pacote local reconstruido |
+| `ruff format --check .` | 81 arquivos ja formatados |
+| `ruff check .` | todos os checks passaram |
+| testes direcionados T-015 | 98 testes passaram em 4.11s |
+| `pytest` com markers default | 193 testes passaram em 14.03s; 3 live/eval deselected |
+| `python scripts/secret_scan.py` | 113 arquivos verificados; zero achados |
+| segredo sintetico conhecido | scanner retornou 1 sem ecoar o valor |
+| `terraform fmt -check -recursive` | todos os arquivos de `infra/terraform` formatados |
+| `terraform init -backend=false -lockfile=readonly` | provider AWS 6.60.0 reutilizado do lock |
+| `terraform validate -no-color` | configuracao valida com Terraform 1.11.4 |
+| CI hospedado | push e pull request do commit `ac9e620` verdes nos jobs Python e Terraform |
+| outras integracoes externas | nenhuma API de aplicacao, credencial, live/eval, plan/apply ou deploy executado |
+
+Conclusao: T-015 atende ao DESIGN no escopo offline. O gate default e fail-closed, o workflow nao
+recebe credentials e as trust boundaries possuem cobertura de composicao. A execucao hospedada
+no draft PR #12 concluiu EXT-007. O incremento esta apto para revisao humana e merge.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -1289,10 +1384,17 @@ Na T-014, `ports/telemetry.py`, `ports/run_store.py`, SQLiteRunStore, graph node
 declarados. A API do SDK Langfuse foi validada pela assinatura instalada, mas a entrega Cloud e o
 comportamento de falha de rede do exporter nao foram presumidos como evidencia: ambos permanecem em
 EXT-006. O acesso ao indice de pacotes serviu somente para dependency resolution e sync local.
+Na T-015, `.gitignore` e `pyproject.toml` foram ajustados para ignorar artefatos temporarios do gate
+e excluir `live`/`eval` por default. `scripts/secret_scan.py`, `tests/unit/test_ci_policy.py` e
+`tests/security/test_trust_boundaries.py` foram adicionados como suporte aos seis arquivos declarados:
+scanner fail-closed, policy estatica do workflow e composicao das trust boundaries. O CI hospedado
+identificou que o lockfile do provider continha somente o hash instalado no Windows;
+`.terraform.lock.hcl` foi enriquecido pelo comando oficial para Linux e Windows, sem mudar a versao
+do provider. As execucoes hospedadas subsequentes ficaram verdes e concluiram EXT-007.
 
 ## Proximo passo
 
-Submeter T-014 a revisao humana. Depois do merge, T-015 e a proxima tarefa offline. EXT-001 a
-EXT-009 permanecem adiados e somente poderao ser
+Submeter T-015 a revisao humana. Depois do merge, iniciar somente a preparacao offline de T-016.
+EXT-001 a EXT-006 e EXT-008 a EXT-009 permanecem adiados e somente poderao ser
 executados individualmente, com autorizacao explicita e o usuario disponivel para revisar seguranca,
 custos, dados e side effects.

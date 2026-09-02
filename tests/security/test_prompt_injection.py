@@ -4,6 +4,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
 from knowledge_agents.adapters.openai_client import OpenAIStructuredClient, default_agent_configs
 from knowledge_agents.application.agents.prompts import load_prompt
@@ -97,3 +98,12 @@ def test_adapter_rejects_messages_that_cross_the_prompt_boundary() -> None:
         assert endpoint.request is None
 
     asyncio.run(scenario())
+
+
+def test_llm_output_cannot_expand_the_application_contract_with_tool_requests() -> None:
+    parsed = asyncio.run(RecordingResponses().parse())
+    payload = parsed.output_parsed.model_dump(mode="json")
+    payload["tool_calls"] = [{"name": "shell", "arguments": {"command": "read secrets"}}]
+
+    with pytest.raises(ValidationError):
+        AcquisitionPacket.model_validate(payload)

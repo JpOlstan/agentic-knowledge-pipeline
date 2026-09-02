@@ -157,3 +157,21 @@ def test_failed_flush_keeps_sanitized_batch_for_secondary_repair() -> None:
         assert "PRIVATE BODY" not in repr(client.calls)
 
     asyncio.run(scenario())
+
+
+def test_redaction_drops_nested_and_non_finite_metadata() -> None:
+    event = TelemetryEvent(
+        run_id=RUN_ID,
+        name="run terminal",
+        occurred_at=NOW,
+        attributes={
+            "contract_repaired": True,
+            "model": {"nested": "PRIVATE BODY"},
+            "score": float("nan"),
+            "status": ["unexpected"],
+        },
+    )
+
+    sanitized = RedactionPolicy().sanitize_event(event)
+
+    assert sanitized.attributes == {"contract_repaired": True}

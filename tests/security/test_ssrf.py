@@ -136,6 +136,30 @@ def test_redirect_dns_rebinding_is_blocked_before_second_request(tmp_path: Path)
     asyncio.run(scenario())
 
 
+def test_redirect_with_embedded_credentials_is_blocked_before_followup(tmp_path: Path) -> None:
+    async def resolver(_: str, __: int) -> tuple[str, ...]:
+        return (PUBLIC_IPV4,)
+
+    async def scenario() -> None:
+        fetcher = RecordingFetcher(
+            [WebResponse(302, {"location": "https://user:password@example.com/private"}, b"")]
+        )
+        provider = WebArticleProvider(
+            WebArticleConfig(failure_root=tmp_path),
+            resolver=resolver,
+            fetcher=fetcher,
+        )
+
+        with pytest.raises(DomainError) as captured:
+            await provider.inspect(request("https://example.com/start"))
+
+        assert captured.value.code is ErrorCode.INVALID_REQUEST
+        assert len(fetcher.targets) == 1
+        assert "password" not in str(captured.value)
+
+    asyncio.run(scenario())
+
+
 def test_redirect_limit_is_five_and_each_hop_is_revalidated(tmp_path: Path) -> None:
     calls = 0
 

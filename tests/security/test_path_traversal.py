@@ -181,6 +181,25 @@ def test_vault_scanner_reads_only_allowlisted_markdown(tmp_path: Path) -> None:
     asyncio.run(scenario())
 
 
+def test_vault_scanner_rejects_direct_read_outside_allowlist(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        vault = tmp_path / "vault"
+        allowed = vault / "knowledge"
+        private = vault / "private"
+        allowed.mkdir(parents=True)
+        private.mkdir()
+        private.joinpath("secret.md").write_text("PRIVATE_BODY", encoding="utf-8")
+        scanner = VaultScanner(vault, allowed_paths=("knowledge",))
+
+        with pytest.raises(DomainError) as exc_info:
+            await scanner.read_markdown("private/secret.md")
+
+        assert exc_info.value.code is ErrorCode.ACCESS_DENIED
+        assert "PRIVATE_BODY" not in str(exc_info.value)
+
+    asyncio.run(scenario())
+
+
 def test_vault_scanner_blocks_symlinked_inventory_directory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
