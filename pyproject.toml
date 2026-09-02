@@ -41,7 +41,7 @@ eval = []
 packages = ["src/knowledge_agents"]
 
 [tool.pytest.ini_options]
-addopts = "-ra --strict-config --strict-markers"
+addopts = '-ra --strict-config --strict-markers -m "not live and not eval"'
 testpaths = ["tests"]
 markers = [
     "live: requires explicitly configured external services and credentials",

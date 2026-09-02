@@ -969,7 +969,7 @@ Registrar uma trace sanitizada por run e reparar Qdrant/Langfuse sem repetir age
 
 ## T-015 - Consolidar hardening, CI e gates offline
 
-**Status:** pending  
+**Status:** completed<br>
 **Incremento:** I6  
 **Dependencias:** T-010, T-011, T-013, T-014  
 **Requisitos:** RNF-001 a RNF-006, CA-007, CA-009
@@ -1001,6 +1001,25 @@ Transformar controles isolados em um gate reproduzivel para cada push e PR.
 - CI local verde e CI hospedado comprovado posteriormente por EXT-007, ambos sem credentials;
 - tentativa de adicionar secret de teste conhecido falha o gate;
 - security suite cobre SSRF, traversal, injection, redaction e tool allowlist.
+
+Evidencias obtidas em 2026-09-02:
+
+- workflow read-only criado com actions pinadas por SHA, sync locked, Ruff, suite offline,
+  Terraform `fmt`/`validate` e secret scan, sem `secrets`, OIDC, plan/apply ou deploy;
+- `pytest` passou a excluir `live` e `eval` por default; 98 testes focados e 193 testes offline
+  passaram, com tres testes live/eval desmarcados;
+- seis testes de composicao cobrem as trust boundaries Internet -> Lambda, SQS -> worker,
+  provider -> agente, LLM -> aplicacao, aplicacao -> vault e aplicacao -> telemetria;
+- scanner passou no repositorio e um segredo AWS sintetico conhecido produziu exit code 1 sem
+  expor seu valor; placeholders seguros de `.env.example` permaneceram aceitos;
+- security suite cobre SSRF inclusive em redirect, leitura fora da allowlist, prompt injection,
+  expansao de capacidades por output LLM, redacao profunda e tool allowlist;
+- `docs/security-model.md` registra threats, mitigacoes, riscos aceitos, classificacao de dados e
+  resposta a incidentes de secrets;
+- `uv lock --check --offline`, `uv sync --locked --all-groups`, Ruff, build, Terraform
+  `fmt -check`, `init -backend=false` e `validate` passaram localmente;
+- nenhuma credencial real, API de aplicacao, live/eval, plan/apply ou deploy foi executado. A
+  execucao do workflow no GitHub permanece pendente exclusivamente em EXT-007.
 
 ## T-016 - Executar testes live e eval CrewAI
 
@@ -1156,13 +1175,14 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 2.2 | 2026-08-13 | Codex | T-013 concluida no decimo incremento com Lambda trigger, Terraform AWS, pacote reproduzivel e gates offline. |
 | 2.3 | 2026-08-15 | Codex com direcionamento humano | Criado backlog canonico EXT-001 a EXT-009 para separar implementacao offline de configuracao, custo, deploy e validacao externa; T-016 e T-017 passam a permitir preparacao offline antecipada sem executar integracoes. |
 | 2.4 | 2026-08-15 | Codex | T-014 concluida offline com Langfuse sanitizado, trace ID deterministico, repairs Qdrant/Langfuse, CLI e evidencias; EXT-006 permanece pendente. |
+| 2.5 | 2026-09-02 | Codex | T-015 concluida offline com CI read-only, markers seguros por default, secret scan, trust-boundary tests e security model; CI hospedado permanece pendente em EXT-007. |
 
 ## Proximo passo
 
-Submeter T-014 a revisao humana. Depois do merge, T-015 e a proxima implementacao offline;
+Submeter T-015 a revisao humana. Depois do merge, iniciar somente a preparacao offline de T-016;
 EXT-001 a EXT-009 ficam adiados ate autorizacao individual com o usuario disponivel:
 
 ```text
-T-014 completed offline -> human review -> T-015 e preparacao offline posterior
+T-015 completed offline -> human review -> T-016 preparacao offline
                                      EXT-001..EXT-009 -> deferred, explicit opt-in
 ```
