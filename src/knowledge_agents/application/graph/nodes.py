@@ -21,15 +21,16 @@ from knowledge_agents.domain.contracts import (
     ArtifactRef,
     DraftPackage,
     EvidenceBatch,
+    RepairTask,
     ReviewPackage,
     RevisionRequest,
     RunManifest,
     SourceDescriptor,
     UsageSummary,
 )
-from knowledge_agents.domain.enums import AgentRole, RunOutcome, RunStatus
+from knowledge_agents.domain.enums import AgentRole, RepairTarget, RunOutcome, RunStatus
 from knowledge_agents.domain.errors import DomainError, ErrorCode
-from knowledge_agents.domain.hashing import canonical_json
+from knowledge_agents.domain.hashing import canonical_json, canonical_sha256
 from knowledge_agents.ports.artifacts import ArtifactStore
 from knowledge_agents.ports.llm import StructuredLLMPort
 from knowledge_agents.ports.providers import KnowledgeSourceProvider
@@ -302,6 +303,12 @@ async def sync_index(state: RunState, dependencies: GraphDependencies) -> dict[s
         await dependencies.vector_index.upsert(())
     except Exception:
         warnings.append(ErrorCode.INDEX_REPAIR_REQUIRED.value)
+        await _enqueue_secondary_repair(
+            state,
+            dependencies,
+            target=RepairTarget.QDRANT,
+            error_code=ErrorCode.INDEX_REPAIR_REQUIRED,
+        )
         if outcome is RunOutcome.COMPLETED:
             outcome = RunOutcome.COMPLETED_WITH_WARNINGS
     await dependencies.run_store.update_stage(run_id=state["run_id"], stage="indexing")
@@ -312,21 +319,17 @@ async def flush_telemetry(state: RunState, dependencies: GraphDependencies) -> d
     warnings = list(state["warnings"])
     outcome = RunOutcome(state["outcome"] or RunOutcome.FAILED.value)
     try:
-        await dependencies.telemetry.record(
-            TelemetryEvent(
-                run_id=state["run_id"],
-                name="run.terminal",
-                occurred_at=datetime.fromisoformat(state["started_at"]),
-                attributes={
-                    "outcome": outcome.value,
-                    "revision_count": state["revision_count"],
-                    "warning_count": len(warnings),
-                },
-            )
-        )
+        for event in await _telemetry_events(state, dependencies, warnings, outcome):
+            await dependencies.telemetry.record(event)
         await dependencies.telemetry.flush()
     except Exception:
         warnings.append(ErrorCode.TELEMETRY_REPAIR_REQUIRED.value)
+        await _enqueue_secondary_repair(
+            state,
+            dependencies,
+            target=RepairTarget.LANGFUSE,
+            error_code=ErrorCode.TELEMETRY_REPAIR_REQUIRED,
+        )
         if outcome is RunOutcome.COMPLETED:
             outcome = RunOutcome.COMPLETED_WITH_WARNINGS
 
@@ -349,6 +352,89 @@ async def flush_telemetry(state: RunState, dependencies: GraphDependencies) -> d
         "warnings": warnings,
         "outcome": outcome.value,
     }
+
+
+async def _telemetry_events(
+    state: RunState,
+    dependencies: GraphDependencies,
+    warnings: list[str],
+    outcome: RunOutcome,
+) -> tuple[TelemetryEvent, ...]:
+    occurred_at = datetime.fromisoformat(state["started_at"])
+    events: list[TelemetryEvent] = []
+    ledger = usage_ledger(state)
+    for record, usage in zip(state["llm_records"], ledger.entries, strict=True):
+        events.append(
+            TelemetryEvent(
+                run_id=state["run_id"],
+                name=str(record["agent"]),
+                occurred_at=occurred_at,
+                observation_type="generation",
+                attributes={
+                    "agent": str(record["agent"]),
+                    "model": str(record["model"]),
+                    "prompt_version": str(record["prompt_version"]),
+                    "contract_repaired": bool(record["contract_repaired"]),
+                    "input_tokens": usage.input_tokens,
+                    "output_tokens": usage.output_tokens,
+                    "cost_usd": usage.cost_usd,
+                    "latency_ms": usage.duration_seconds * 1_000,
+                },
+            )
+        )
+
+    retrieval_ref = state.get("retrieval_context_ref")
+    if isinstance(retrieval_ref, str):
+        retrieval = await dependencies.artifacts.read_json(decode_artifact_ref(retrieval_ref))
+        hits = retrieval.get("hits", ()) if isinstance(retrieval, dict) else ()
+        events.append(
+            TelemetryEvent(
+                run_id=state["run_id"],
+                name="vault.retrieve",
+                occurred_at=occurred_at,
+                observation_type="retriever",
+                attributes={"point_count": len(hits) if isinstance(hits, list) else 0},
+            )
+        )
+
+    events.append(
+        TelemetryEvent(
+            run_id=state["run_id"],
+            name="run.terminal",
+            occurred_at=occurred_at,
+            observation_type="span",
+            attributes={
+                "outcome": outcome.value,
+                "revision_count": state["revision_count"],
+                "warning_count": len(warnings),
+            },
+        )
+    )
+    return tuple(events)
+
+
+async def _enqueue_secondary_repair(
+    state: RunState,
+    dependencies: GraphDependencies,
+    *,
+    target: RepairTarget,
+    error_code: ErrorCode,
+) -> None:
+    fingerprint = canonical_sha256({"run_id": state["run_id"], "target": target.value})
+    repair_id = f"repair-{fingerprint[:24]}"
+    try:
+        await dependencies.run_store.enqueue_repair(
+            RepairTask(
+                repair_id=repair_id,
+                run_id=state["run_id"],
+                target=target,
+                attempts=0,
+                next_attempt_at=datetime.fromisoformat(state["started_at"]),
+                last_error=error_code.value,
+            )
+        )
+    except Exception:
+        return
 
 
 def _remaining_budget(state: RunState) -> dict[str, int | float]:

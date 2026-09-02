@@ -84,6 +84,16 @@ class RunStore(Protocol):
 
     async def list_repairs(self) -> tuple[RepairTask, ...]: ...
 
+    async def complete_repair(self, repair_id: str) -> None: ...
+
+    async def fail_repair(
+        self,
+        *,
+        repair_id: str,
+        attempts: int,
+        last_error: str,
+    ) -> None: ...
+
     async def replay_run(
         self,
         *,

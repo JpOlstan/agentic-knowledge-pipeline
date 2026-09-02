@@ -349,6 +349,8 @@ class SqliteRunStore(RunStore):
                     repair_id, run_id, target, status, attempts, next_attempt_at, last_error
                 ) VALUES (?, ?, ?, 'pending', ?, ?, ?)
                 ON CONFLICT(repair_id) DO UPDATE SET
+                    status = 'pending',
+                    attempts = excluded.attempts,
                     next_attempt_at = excluded.next_attempt_at,
                     last_error = excluded.last_error
                 """,
@@ -374,6 +376,36 @@ class SqliteRunStore(RunStore):
                 """
             )
             return tuple(_repair_task(row) for row in await cursor.fetchall())
+
+    async def complete_repair(self, repair_id: str) -> None:
+        async with self._connection() as connection:
+            await connection.execute(
+                """
+                UPDATE repair_tasks
+                SET status = 'completed', last_error = NULL
+                WHERE repair_id = ? AND status = 'pending'
+                """,
+                (repair_id,),
+            )
+            await connection.commit()
+
+    async def fail_repair(
+        self,
+        *,
+        repair_id: str,
+        attempts: int,
+        last_error: str,
+    ) -> None:
+        async with self._connection() as connection:
+            await connection.execute(
+                """
+                UPDATE repair_tasks
+                SET status = 'failed', attempts = ?, last_error = ?
+                WHERE repair_id = ? AND status = 'pending'
+                """,
+                (attempts, last_error, repair_id),
+            )
+            await connection.commit()
 
     async def replay_run(
         self,
