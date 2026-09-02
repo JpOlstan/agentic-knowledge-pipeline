@@ -15,9 +15,9 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 Os onze primeiros incrementos foram mergeados; o PR #11 produziu o merge commit `0caf5c5`. O
 decimo segundo incremento esta na branch `codex/increment-12-hardening-ci`: T-015 foi concluida
-offline e T-016/T-017 permanecem pendentes. EXT-001 a EXT-009 continuam como backlog separado.
-Nenhuma API de aplicacao, CI hospedado, trace live, eval, plan/apply, deploy, URL real ou credencial
-real foi usada.
+e T-016/T-017 permanecem pendentes. EXT-007 foi concluido pelos checks do draft PR #12; os demais
+itens EXT continuam como backlog separado. Nenhuma API de aplicacao, trace live, eval, plan/apply,
+deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -199,9 +199,9 @@ real foi usada.
 | Tarefas autorizadas | `T-015` |
 | Tarefas executadas | `T-015` offline |
 | Tarefas fora do escopo | `T-016`, `T-017`; `EXT-001` a `EXT-009` |
-| CI | workflow read-only implementado e validado estaticamente; execucao hospedada pendente |
+| CI | workflow read-only validado localmente e nos jobs Python/Terraform do draft PR #12 |
 | Terraform | fmt, init sem backend e validate; nenhum plan/apply |
-| Rede | somente registries de pacotes/providers para sync/init local |
+| Rede | registries de pacotes/providers no gate e GitHub Actions do PR; nenhuma API de aplicacao |
 | Testes live/eval | excluidos por default; tres testes permaneceram desmarcados |
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
@@ -236,7 +236,7 @@ real foi usada.
 | I3 | completed | T-009 concluida; adapter e tres agentes validados offline |
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
 | I5 | completed offline | T-012 e T-013 concluidas; smoke AWS manual pendente |
-| I6 | completed offline | T-014 e T-015 concluidas; Langfuse live e CI hospedado em EXT-006/EXT-007 |
+| I6 | completed | T-014/T-015 e EXT-007 concluidos; Langfuse live permanece em EXT-006 |
 | I7 | pending | nenhuma |
 
 ## Backlog de integracoes externas adiadas
@@ -253,7 +253,7 @@ sanitizadas quando cada item for executado.
 | EXT-004 | NotebookLM MCP read-only com sessao real | T-011 | T-016 | pending; login/proxy/data dir reais nao usados |
 | EXT-005 | AWS plan/apply, deploy, IAM, trigger, worker e CloudWatch | T-012, T-013 | T-016 | pending; nenhuma API AWS chamada |
 | EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; adapter e repairs offline concluidos, sem trace Cloud |
-| EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | pending; workflow implementado localmente, execucao hospedada ainda nao realizada |
+| EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | completed em 2026-09-02; PR #12 com jobs Python e Terraform verdes, sem credentials |
 | EXT-008 | Doctor/preflight dos profiles externos | T-005, T-008, T-011, T-013, T-014 | antes da eval | pending; configuracoes externas ausentes |
 | EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; depende de EXT-001 a EXT-008 |
 
@@ -487,8 +487,10 @@ um item.
   traversal, prompt injection, redaction e tool allowlist;
 - security model documenta threats, mitigacoes, riscos aceitos, classificacao de dados e resposta
   segura a incidentes de secrets;
-- registries de pacotes/providers foram usados apenas para sync/init local; nenhuma API de
-  aplicacao, CI hospedado, credencial real, live/eval, plan/apply ou deploy foi executado.
+- a primeira rodada hospedada encontrou um checksum `h1` apenas para Windows no provider AWS; o
+  lockfile foi regenerado para `windows_amd64` e `linux_amd64`, sem alterar a versao 6.60.0;
+- no commit corretivo `ac9e620`, as execucoes de push e pull request passaram nos jobs Python e
+  Terraform; nenhuma API de aplicacao, credencial real, live/eval, plan/apply ou deploy foi usado.
 
 ## Evidencias de T-001
 
@@ -1096,6 +1098,7 @@ automaticos ficam desabilitados.
 | Redacao | estruturas profundas e metadata nao finita foram descartadas antes da telemetria |
 | Composicao | seis trust boundaries possuem testes explicitos de fail-closed/redacao |
 | Resposta a incidente | documento define contencao, rotacao, auditoria e remediacao sanitizada |
+| CI hospedado | draft PR #12 passou nos jobs Python e Terraform, sem credentials |
 
 ### Suites de T-015
 
@@ -1105,6 +1108,7 @@ automaticos ficam desabilitados.
 | secret scan do repositorio | 113 arquivos verificados; zero achados |
 | caso negativo de secret sintetico | exit code 1; valor nao apareceu no output |
 | **Suite offline total** | **193 passaram em 14.03s; 3 live/eval deselected** |
+| **GitHub Actions** | **push e pull request verdes nos dois jobs apos lock multiplataforma** |
 
 ### Rastreabilidade parcial do decimo segundo incremento
 
@@ -1116,7 +1120,7 @@ automaticos ficam desabilitados.
 | RNF-005 | trust boundaries compostas e outputs incapazes de ampliar capabilities | gate concluido |
 | RNF-006 | lock, build e Terraform fmt/init/validate reproduziveis | gate concluido |
 | CA-007/CA-009 | SSRF/traversal/injection/redaction e gates pre-live | concluido offline |
-| EXT-007 | execucao do workflow no GitHub | pending; opt-in externo exigido |
+| EXT-007 | execucao do workflow no GitHub | completed; PR #12 verde sem credentials |
 
 ## Gate combinado do segundo incremento
 
@@ -1331,11 +1335,12 @@ em EXT-006. O incremento esta apto para revisao humana, commit e draft PR.
 | `terraform fmt -check -recursive` | todos os arquivos de `infra/terraform` formatados |
 | `terraform init -backend=false -lockfile=readonly` | provider AWS 6.60.0 reutilizado do lock |
 | `terraform validate -no-color` | configuracao valida com Terraform 1.11.4 |
-| integracoes externas | nenhuma API, CI hospedado, credencial, live/eval, plan/apply ou deploy executado |
+| CI hospedado | push e pull request do commit `ac9e620` verdes nos jobs Python e Terraform |
+| outras integracoes externas | nenhuma API de aplicacao, credencial, live/eval, plan/apply ou deploy executado |
 
 Conclusao: T-015 atende ao DESIGN no escopo offline. O gate default e fail-closed, o workflow nao
 recebe credentials e as trust boundaries possuem cobertura de composicao. A execucao hospedada
-permanece separada em EXT-007. O incremento esta apto para revisao humana, commit e draft PR.
+no draft PR #12 concluiu EXT-007. O incremento esta apto para revisao humana e merge.
 
 ## Desvios
 
@@ -1383,11 +1388,13 @@ Na T-015, `.gitignore` e `pyproject.toml` foram ajustados para ignorar artefatos
 e excluir `live`/`eval` por default. `scripts/secret_scan.py`, `tests/unit/test_ci_policy.py` e
 `tests/security/test_trust_boundaries.py` foram adicionados como suporte aos seis arquivos declarados:
 scanner fail-closed, policy estatica do workflow e composicao das trust boundaries. O CI hospedado
-nao foi usado como evidencia e permanece em EXT-007.
+identificou que o lockfile do provider continha somente o hash instalado no Windows;
+`.terraform.lock.hcl` foi enriquecido pelo comando oficial para Linux e Windows, sem mudar a versao
+do provider. As execucoes hospedadas subsequentes ficaram verdes e concluiram EXT-007.
 
 ## Proximo passo
 
 Submeter T-015 a revisao humana. Depois do merge, iniciar somente a preparacao offline de T-016.
-EXT-001 a EXT-009 permanecem adiados e somente poderao ser
+EXT-001 a EXT-006 e EXT-008 a EXT-009 permanecem adiados e somente poderao ser
 executados individualmente, com autorizacao explicita e o usuario disponivel para revisar seguranca,
 custos, dados e side effects.
