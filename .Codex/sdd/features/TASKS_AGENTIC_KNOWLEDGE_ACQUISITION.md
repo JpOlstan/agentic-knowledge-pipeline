@@ -1025,7 +1025,7 @@ Evidencias obtidas em 2026-09-02:
 
 ## T-016 - Executar testes live e eval CrewAI
 
-**Status:** pending  
+**Status:** in progress - offline preparation completed<br>
 **Incremento:** I7  
 **Dependencias:** T-015  
 **Requisitos:** RF-014, CA-001, CA-002, CA-009
@@ -1066,6 +1066,25 @@ Executar o caso real pelas duas rotas e produzir baseline comparativa sanitizada
 - manifests privados preservados localmente;
 - relatorio publico sanitizado revisado;
 - gaps principais convertidos em iteracoes de DEFINE/DESIGN quando necessario.
+
+Evidencias da preparacao offline obtidas em 2026-09-02:
+
+- contratos imutaveis fixam commit, source fingerprint opaco, contracts/prompts/models, index
+  snapshot, budget e cache policy em um plano com hash canonico;
+- preflight falha fechado sem autorizacao vinculada ao plano, budget total para as duas rotas,
+  EXT-001 a EXT-008 concluidos e storage privado local pronto;
+- builder valida run IDs, pins, cache e usage contra o budget antes de reduzir packages/manifests a
+  metricas agregadas de cobertura, suporte, proveniencia, drafts, revisao, custo e latencia;
+- renderer aceita cinco manifests JSON tipados com no maximo 1 MiB cada, rejeita symlinks, nao
+  imprime erros privados e grava o Markdown sanitizado atomicamente;
+- `.local/evals/` foi ignorado pelo Git e o metodo documenta custodia privada, ordem controlada,
+  comandos futuros, revisao humana e proibicao de score automatico;
+- o baseline publico permanece explicitamente vazio, sem URL, conteudo ou resultados fabricados;
+- 11 testes focados e 204 testes offline passaram; quatro testes live/eval permaneceram
+  desmarcados; lock, Ruff, build, Terraform e secret scan passaram;
+- nenhuma API de aplicacao, fonte real, credencial, Qdrant, NotebookLM, OpenAI, AWS, Langfuse,
+  teste live/eval, plan/apply ou deploy foi executado. EXT-001 a EXT-006, EXT-008 e EXT-009
+  permanecem pendentes para a fase controlada.
 
 ## T-017 - Finalizar documentacao e primeira release de portfolio
 
@@ -1178,14 +1197,15 @@ Cada PR deve ser revisavel de forma independente e preservar testes default sem 
 | 2.3 | 2026-08-15 | Codex com direcionamento humano | Criado backlog canonico EXT-001 a EXT-009 para separar implementacao offline de configuracao, custo, deploy e validacao externa; T-016 e T-017 passam a permitir preparacao offline antecipada sem executar integracoes. |
 | 2.4 | 2026-08-15 | Codex | T-014 concluida offline com Langfuse sanitizado, trace ID deterministico, repairs Qdrant/Langfuse, CLI e evidencias; EXT-006 permanece pendente. |
 | 2.5 | 2026-09-02 | Codex | T-015 concluida com CI read-only local e hospedado, markers seguros por default, secret scan, trust-boundary tests e security model; EXT-007 concluido sem credentials. |
+| 2.6 | 2026-09-02 | Codex | Preparacao offline de T-016 concluida com plano pinado, autorizacao/preflight fail-closed, metricas sanitizadas, renderer atomico, baseline vazio e testes; execucao controlada e EXT-009 permanecem pendentes. |
 
 ## Proximo passo
 
-Submeter T-015 a revisao humana. Depois do merge, iniciar somente a preparacao offline de T-016;
-EXT-001 a EXT-006 e EXT-008 a EXT-009 ficam adiados ate autorizacao individual com o usuario
-disponivel:
+Submeter a preparacao offline de T-016 a revisao humana. Depois do merge, iniciar somente a
+documentacao offline de T-017; EXT-001 a EXT-006 e EXT-008 a EXT-009 ficam adiados ate autorizacao
+individual com o usuario disponivel:
 
 ```text
-T-015 completed -> human review -> T-016 preparacao offline
-                    EXT-001..EXT-006, EXT-008..EXT-009 -> deferred, explicit opt-in
+T-016 offline ready -> human review -> T-017 documentacao offline
+                         EXT-001..EXT-006, EXT-008..EXT-009 -> deferred, explicit opt-in
 ```
