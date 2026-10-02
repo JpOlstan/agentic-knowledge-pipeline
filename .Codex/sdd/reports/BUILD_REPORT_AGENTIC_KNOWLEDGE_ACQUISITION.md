@@ -13,11 +13,11 @@ related: [TASKS_AGENTIC_KNOWLEDGE_ACQUISITION, DESIGN_AGENTIC_KNOWLEDGE_ACQUISIT
 
 ## Status
 
-Os onze primeiros incrementos foram mergeados; o PR #11 produziu o merge commit `0caf5c5`. O
-decimo segundo incremento esta na branch `codex/increment-12-hardening-ci`: T-015 foi concluida
-e T-016/T-017 permanecem pendentes. EXT-007 foi concluido pelos checks do draft PR #12; os demais
-itens EXT continuam como backlog separado. Nenhuma API de aplicacao, trace live, eval, plan/apply,
-deploy, URL real ou credencial real foi usada.
+Os doze primeiros incrementos foram mergeados; o PR #12 produziu o merge commit `051c1de`. O
+decimo terceiro incremento esta na branch `codex/increment-13-eval-preparation`: a preparacao
+offline de T-016 foi concluida, enquanto sua execucao controlada e T-017 permanecem pendentes.
+EXT-007 esta concluido e os demais itens EXT continuam como backlog separado. Nenhuma API de
+aplicacao, fonte real, trace live, eval, plan/apply, deploy, URL real ou credencial real foi usada.
 
 ## Escopo do primeiro incremento
 
@@ -206,6 +206,22 @@ deploy, URL real ou credencial real foi usada.
 | Deploy | nao executado |
 | Credenciais reais | nao usadas |
 
+## Escopo do decimo terceiro incremento
+
+| Campo | Valor |
+|---|---|
+| Branch | `codex/increment-13-eval-preparation` |
+| Commit base | `051c1de` |
+| Tarefas autorizadas | preparacao offline de `T-016` |
+| Tarefas executadas | harness, preflight, sanitizacao, renderer, metodo e baseline vazio |
+| Tarefas fora do escopo | execucao controlada de `T-016`; `T-017`; `EXT-001` a `EXT-006`, `EXT-008`, `EXT-009` |
+| Providers | nenhuma rota real executada; contracts/packages sinteticos somente em memoria |
+| Manifests privados | layout ignorado documentado; nenhum manifest real criado |
+| Testes live/eval | excluidos por default; quatro testes permaneceram desmarcados |
+| Rede de aplicacao | nao usada |
+| Deploy | nao executado |
+| Credenciais reais | nao usadas |
+
 ## Proveniencia do handoff
 
 | Campo | Valor |
@@ -237,7 +253,7 @@ deploy, URL real ou credencial real foi usada.
 | I4 | completed | T-010 e T-011 concluidas; dois providers validados offline |
 | I5 | completed offline | T-012 e T-013 concluidas; smoke AWS manual pendente |
 | I6 | completed | T-014/T-015 e EXT-007 concluidos; Langfuse live permanece em EXT-006 |
-| I7 | pending | nenhuma |
+| I7 | in progress offline | preparacao de T-016 concluida; execucao controlada e T-017 pendentes |
 
 ## Backlog de integracoes externas adiadas
 
@@ -255,7 +271,7 @@ sanitizadas quando cada item for executado.
 | EXT-006 | Langfuse Cloud e repair real | T-014 | T-016 | pending; adapter e repairs offline concluidos, sem trace Cloud |
 | EXT-007 | CI hospedado no GitHub | T-015 | T-015/T-016 | completed em 2026-09-02; PR #12 com jobs Python e Terraform verdes, sem credentials |
 | EXT-008 | Doctor/preflight dos profiles externos | T-005, T-008, T-011, T-013, T-014 | antes da eval | pending; configuracoes externas ausentes |
-| EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; depende de EXT-001 a EXT-008 |
+| EXT-009 | Eval ponta a ponta CrewAI pelas duas rotas | T-016 | T-016 | pending; harness/preflight/report prontos offline, depende de EXT-001 a EXT-008 |
 
 Regras vigentes: nenhum item EXT e iniciado por inferencia; a autorizacao ocorre por ID e um item por
 vez. Credenciais serao criadas e armazenadas pelo usuario fora do Git, sem serem coladas em chat ou
@@ -491,6 +507,21 @@ um item.
   lockfile foi regenerado para `windows_amd64` e `linux_amd64`, sem alterar a versao 6.60.0;
 - no commit corretivo `ac9e620`, as execucoes de push e pull request passaram nos jobs Python e
   Terraform; nenhuma API de aplicacao, credencial real, live/eval, plan/apply ou deploy foi usado.
+
+### 2026-09-02 - Decimo terceiro incremento: preparacao offline de T-016
+
+- PR #12 confirmado como mergeado; branch criada de `051c1de` somente para a fase offline;
+- plano tipado fixa commit, fingerprint opaco da fonte, versions, models, index snapshot, budget e
+  cache policy, produzindo hash canonico para vincular autorizacao;
+- preflight exige autorizacao explicita do plano e custo das duas rotas, EXT-001 a EXT-008
+  concluidos e storage privado pronto, falhando fechado caso qualquer condicao falte;
+- packages e manifest completos sao reduzidos a contagens, usage, hashes opacos e codigos seguros;
+  URLs, conteudo, prompts, paths e run IDs brutos nao entram no relatorio publico;
+- renderer le cinco JSONs tipados, limita tamanho, rejeita symlinks, usa erro seguro e escrita
+  atomica; `.local/evals/` permanece fora do Git;
+- metodo controlado e baseline vazio foram documentados sem fabricar resultado ou threshold;
+- nenhuma API, fonte real, credencial, Qdrant, OpenAI, NotebookLM, AWS, Langfuse, live/eval,
+  plan/apply ou deploy foi executado.
 
 ## Evidencias de T-001
 
@@ -1122,6 +1153,45 @@ automaticos ficam desabilitados.
 | CA-007/CA-009 | SSRF/traversal/injection/redaction e gates pre-live | concluido offline |
 | EXT-007 | execucao do workflow no GitHub | completed; PR #12 verde sem credentials |
 
+## Evidencias da preparacao offline de T-016
+
+### Plano, preflight e relatorio
+
+| Controle | Evidencia offline |
+|---|---|
+| Plano comparavel | commit, source fingerprint, contracts/prompts/models, index, budget e cache pinados |
+| Autorizacao | approval referencia o hash exato do plano e cobre o teto de custo das duas rotas |
+| Dependencias externas | preflight exige EXT-001 a EXT-008 e storage privado antes da eval |
+| Budget | usage agregado acima de calls/tokens/cost/duration falha com `budget_exceeded` |
+| Paridade | duas rotas separadas exigem mesmo plan hash e mesmo source-case fingerprint |
+| Cobertura e suporte | somente contagens e ratio; topicos, claims e evidence text nao sao copiados |
+| Drafts e revisao | actions/statuses, duplicidade, bloqueios e edicoes humanas sao agregados |
+| Sanitizacao | output estrito proibe extras e credenciais em labels; aceita somente agregados e hashes seguros |
+| Renderer | inputs regulares de ate 1 MiB, preflight obrigatorio, erro seguro e escrita atomica |
+| Baseline | placeholder declara ausencia de execucao e nao pode ser interpretado como evidencia |
+| Julgamento | conclusao fica `pending_human_review`, sem score, ranking ou threshold automatico |
+
+### Suites da preparacao T-016
+
+| Suite | Resultado |
+|---|---|
+| `tests/eval/test_crewai_comparison.py` | 11 passaram e 1 eval foi desmarcada em 0.22s |
+| secret scan | 118 arquivos verificados; zero achados |
+| **Suite offline total** | **204 passaram em 11.56s; 4 live/eval deselected** |
+
+### Rastreabilidade parcial do decimo terceiro incremento
+
+| Requisito | Evidencia deste incremento | Estado |
+|---|---|---|
+| RF-014 | fixture comum tipada, paridade de pins e report deterministico/sanitizado | preparacao offline concluida; resultados reais pendentes |
+| RNF-001 | manifests privados ignorados, output allowlisted e erro sem path/conteudo | gate concluido offline |
+| RNF-003 | autorizacao e budget de duas rotas bloqueiam antes de qualquer side effect | gate concluido offline |
+| RNF-004 | harness coberto por default sem rede; live/eval continuam opt-in | gate concluido offline |
+| RNF-006 | plano/relatorio versionados e baseline sem dados fabricados | gate concluido offline |
+| CA-001/CA-002 | contratos aceitam ambas as rotas com mesmos pins | somente preparacao; happy paths reais pendentes |
+| CA-009 | metodo e baseline publico sanitizado disponiveis para revisao | preparacao concluida; conclusao humana pendente |
+| EXT-009 | runs reais e baseline comparativa | pending; autorizacao externa exigida |
+
 ## Gate combinado do segundo incremento
 
 | Comando | Resultado |
@@ -1342,6 +1412,26 @@ Conclusao: T-015 atende ao DESIGN no escopo offline. O gate default e fail-close
 recebe credentials e as trust boundaries possuem cobertura de composicao. A execucao hospedada
 no draft PR #12 concluiu EXT-007. O incremento esta apto para revisao humana e merge.
 
+## Gate do decimo terceiro incremento
+
+| Comando | Resultado |
+|---|---|
+| manifesto T-016 | 6 de 6 arquivos declarados presentes; modulo, renderer e ignore como suporte offline |
+| `uv lock --check --offline` | 94 pacotes resolvidos; lockfile sincronizado |
+| `ruff format --check .` | 84 arquivos ja formatados |
+| `ruff check .` | todos os checks passaram |
+| testes direcionados T-016 offline | 11 testes passaram e 1 eval foi desmarcada em 0.22s |
+| `pytest` com markers default | 204 testes passaram em 11.56s; 4 live/eval deselected |
+| `python scripts/secret_scan.py` | 118 arquivos verificados; zero achados |
+| `uv build --offline` | sdist e wheel gerados com sucesso |
+| `terraform fmt -check -recursive` | todos os arquivos formatados |
+| `terraform validate -no-color` | configuracao valida sem plan/apply |
+| integracoes externas | nenhuma API, fonte real, credencial, live/eval, plan/apply ou deploy executado |
+
+Conclusao: a preparacao offline de T-016 atende ao DESIGN. O sistema bloqueia a eval sem plano,
+autorizacao, budget e dependencias externas; o baseline continua vazio. A execucao controlada de
+T-016 e EXT-009 permanecem abertas e nao podem ser inferidas desta evidencia.
+
 ## Desvios
 
 Nenhum desvio de requisito ou arquitetura registrado. No terceiro incremento, o DESIGN e o teste
@@ -1391,10 +1481,17 @@ scanner fail-closed, policy estatica do workflow e composicao das trust boundari
 identificou que o lockfile do provider continha somente o hash instalado no Windows;
 `.terraform.lock.hcl` foi enriquecido pelo comando oficial para Linux e Windows, sem mudar a versao
 do provider. As execucoes hospedadas subsequentes ficaram verdes e concluiram EXT-007.
+Na preparacao de T-016, `src/knowledge_agents/application/evaluation.py`,
+`scripts/render_eval_report.py` e `.gitignore` foram adicionados/alterados como suporte aos tres
+arquivos novos do manifesto e aos tres smokes live ja existentes. Os testes em `tests/eval` ficam
+no gate default enquanto exercitam apenas o harness offline; a futura execucao contra manifests
+reais continua marcada conceitualmente como `eval` e exige opt-in. T-016 nao foi marcada completed
+porque CA-001/CA-002, os resultados comparativos e EXT-009 continuam pendentes.
 
 ## Proximo passo
 
-Submeter T-015 a revisao humana. Depois do merge, iniciar somente a preparacao offline de T-016.
-EXT-001 a EXT-006 e EXT-008 a EXT-009 permanecem adiados e somente poderao ser
+Submeter a preparacao offline de T-016 a revisao humana. Depois do merge, iniciar somente a
+documentacao offline de T-017. EXT-001 a EXT-006 e EXT-008 a EXT-009 permanecem adiados e somente
+poderao ser
 executados individualmente, com autorizacao explicita e o usuario disponivel para revisar seguranca,
 custos, dados e side effects.

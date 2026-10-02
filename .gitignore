@@ -36,3 +36,4 @@ crash.log
 .mcp-local/
 .notebooklm/
 .aws/
+.local/evals/
